@@ -1,0 +1,66 @@
+# Builds the Vite app under CT-Tool-cursor-audit-v3-prod-c01e/app and deploys to GitHub Pages.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: CT-Tool-cursor-audit-v3-prod-c01e/app/package-lock.json
+
+      - name: Install
+        working-directory: CT-Tool-cursor-audit-v3-prod-c01e/app
+        run: npm ci
+
+      - name: Lint
+        working-directory: CT-Tool-cursor-audit-v3-prod-c01e/app
+        run: npm run lint
+
+      - name: Engine sanity tests
+        working-directory: CT-Tool-cursor-audit-v3-prod-c01e/app
+        run: npm run test
+
+      - name: Build
+        working-directory: CT-Tool-cursor-audit-v3-prod-c01e/app
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          # Project Pages URL is /<repo>/ — asset paths must match
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: CT-Tool-cursor-audit-v3-prod-c01e/app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4

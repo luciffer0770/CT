@@ -15,6 +15,7 @@ export default function Dashboard({ schedule }) {
   const steps = useStore(s => s.steps);
   const saveNewVersion = useStore(s => s.saveNewVersion);
   const resetToBaseline = useStore(s => s.resetToBaseline);
+  const askConfirm = useStore(s => s.askConfirm);
 
   const { totalCycleTime, efficiency, bottleneck, vaPct, nvaPct } = schedule;
 
@@ -38,7 +39,15 @@ export default function Dashboard({ schedule }) {
           <div className="page-sub">Real-time overview of cycle time, efficiency and critical path for Line 07.</div>
         </div>
         <div className="toolbar">
-          <button className="btn" onClick={() => { if (confirm("Reset current steps to the saved baseline?")) resetToBaseline(); }}><Icon name="reset" size={13}/> Reset</button>
+          <button
+            className="btn"
+            onClick={() => askConfirm({
+              title: "Reset to baseline?",
+              body: "Replace the current steps with your saved baseline?",
+              confirmLabel: "Reset to baseline",
+              onConfirm: () => resetToBaseline(),
+            })}
+          ><Icon name="reset" size={13}/> Reset</button>
           <button className="btn" onClick={() => exportStepsToExcel(steps, schedule)}><Icon name="download" size={13}/> Export .xlsx</button>
           <button className="btn primary" onClick={() => exportKPIsToPDF({ schedule })}><Icon name="download" size={13}/> Export snapshot</button>
         </div>

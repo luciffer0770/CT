@@ -1,4 +1,5 @@
 import React from "react";
+import { useStore } from "../store/useStore.js";
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -62,9 +63,21 @@ export default class ErrorBoundary extends React.Component {
             >Reload</button>
             <button
               onClick={() => {
-                if (!confirm("This will clear your project from local storage. Continue?")) return;
-                try { localStorage.clear(); } catch {}
-                window.location.reload();
+                useStore.getState().askConfirm({
+                  title: "Reset storage?",
+                  body: "This clears all Cycle Time Analyzer data in this browser (local storage), then reloads the page. Export JSON first if you need a backup.",
+                  danger: true,
+                  confirmLabel: "Clear and reload",
+                  cancelLabel: "Cancel",
+                  onConfirm: () => {
+                    try {
+                      localStorage.clear();
+                    } catch {
+                      /* ignore */
+                    }
+                    window.location.reload();
+                  },
+                });
               }}
               style={{
                 padding: "8px 14px", border: "1px solid rgba(225,29,46,.25)",

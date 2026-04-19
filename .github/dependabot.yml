@@ -1,0 +1,7 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /CT-Tool-cursor-audit-v3-prod-c01e/app
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

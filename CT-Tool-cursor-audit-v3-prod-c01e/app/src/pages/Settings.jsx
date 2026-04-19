@@ -21,10 +21,10 @@ export default function Settings() {
   const steps = useStore(s => s.steps);
   const exportProjectJSON = useStore(s => s.exportProjectJSON);
   const importProjectJSON = useStore(s => s.importProjectJSON);
+  const askConfirm = useStore(s => s.askConfirm);
 
   const [versionLabel, setVersionLabel] = useState("");
   const [lineLabel, setLineLabel] = useState("");
-  const [confirmReset, setConfirmReset] = useState(false);
   const jsonRef = useRef(null);
 
   const schedule = computeSchedule(steps, taktTime);
@@ -230,7 +230,16 @@ export default function Settings() {
                   </div>
                   <div style={{ display: "flex", gap: 4 }}>
                     <button className="btn xs" onClick={() => restoreVersion(v.id)}><Icon name="history" size={11}/> Restore</button>
-                    <button className="btn xs danger" onClick={() => { if (confirm(`Delete version "${v.label}"?`)) deleteVersion(v.id); }}><Icon name="trash" size={11}/></button>
+                    <button
+                      className="btn xs danger"
+                      onClick={() => askConfirm({
+                        title: "Delete version?",
+                        body: `Delete saved version "${v.label}"? This cannot be undone.`,
+                        danger: true,
+                        confirmLabel: "Delete",
+                        onConfirm: () => deleteVersion(v.id),
+                      })}
+                    ><Icon name="trash" size={11}/></button>
                   </div>
                 </div>
               ))}
@@ -259,7 +268,16 @@ export default function Settings() {
                       <div style={{ fontSize: 12.5, fontWeight: 600 }}>{m.label}</div>
                       <div className="mono muted" style={{ fontSize: 10 }}>CT {sc.totalCycleTime}s · Eff {sc.efficiency}% · B/N {sc.bottleneck?.name?.split(" ")[0] || "—"}</div>
                     </div>
-                    <button className="btn xs danger" onClick={() => { if (confirm(`Remove snapshot "${m.label}"?`)) removeLineSnapshot(m.id); }}><Icon name="trash" size={11}/></button>
+                    <button
+                      className="btn xs danger"
+                      onClick={() => askConfirm({
+                        title: "Remove snapshot?",
+                        body: `Remove line snapshot "${m.label}"?`,
+                        danger: true,
+                        confirmLabel: "Remove",
+                        onConfirm: () => removeLineSnapshot(m.id),
+                      })}
+                    ><Icon name="trash" size={11}/></button>
                   </div>
                 );
               })}
@@ -281,7 +299,16 @@ export default function Settings() {
           <div className="card-head"><h3>Process Template Library</h3><span className="sub">{TEMPLATES.length} TEMPLATES</span></div>
           <div className="card-body" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
             {TEMPLATES.map(t => (
-              <div key={t.id} className="template-card" onClick={() => { if (confirm(`Load "${t.name}"? This replaces current steps.`)) { loadTemplate(t.id); toast(`Loaded ${t.name}`, "success"); } }}>
+              <div
+                key={t.id}
+                className="template-card"
+                onClick={() => askConfirm({
+                  title: "Load template?",
+                  body: `Load "${t.name}"? This replaces your current steps and baseline.`,
+                  confirmLabel: "Load template",
+                  onConfirm: () => { loadTemplate(t.id); toast(`Loaded ${t.name}`, "success"); },
+                })}
+              >
                 <div style={{ fontFamily: "var(--font-head)", fontSize: 13, fontWeight: 600 }}>{t.name}</div>
                 <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4, minHeight: 30 }}>{t.description}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
@@ -304,7 +331,26 @@ export default function Settings() {
             <AboutTile k="Versions stored" v={versions.length}/>
           </div>
           <div className="card-body" style={{ paddingTop: 0, fontSize: 11, color: "var(--ink-3)" }}>
-            Data is stored locally in your browser (no server). Use the Export JSON button at the top to back up or share projects.
+            Data is stored locally in your browser only — there is no cloud account and no server copy. Use Export JSON to back up or share projects.
+          </div>
+        </div>
+
+        {/* Data safety */}
+        <div className="card col-12" style={{ borderColor: "rgba(30,64,175,.22)" }}>
+          <div className="card-head">
+            <h3>Data safety &amp; backup</h3>
+            <span className="tag blue">LOCAL ONLY</span>
+          </div>
+          <div className="card-body" style={{ display: "grid", gap: 10, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55 }}>
+            <p style={{ margin: 0 }}>
+              <strong>No backend is required</strong> — the app runs entirely in your browser. Use <span className="mono">Export JSON</span> regularly and keep the file somewhere safe (network drive, email to yourself, etc.).
+            </p>
+            <p style={{ margin: 0 }}>
+              If cache or site data is cleared, or you open the tool on another machine, <strong>local storage is gone</strong> unless you <span className="mono">Import JSON</span> from a previous export. Export before major changes or before browser maintenance.
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: "var(--ink-3)" }}>
+              Closing the tab may show a reminder if you have not exported since your last edits — your browser decides whether to show the leave prompt.
+            </p>
           </div>
         </div>
 
@@ -320,14 +366,16 @@ export default function Settings() {
               <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>Restore default 10-step cycle. Deletes versions, snapshots and profile.</div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button className="btn" onClick={() => setConfirmReset(false)}>Cancel</button>
               <button
                 className="btn danger"
-                onClick={() => {
-                  if (confirmReset) { resetAll(); setConfirmReset(false); toast("All data reset", "success"); }
-                  else setConfirmReset(true);
-                }}
-              >{confirmReset ? "Click again to confirm" : "Reset data"}</button>
+                onClick={() => askConfirm({
+                  title: "Reset all data?",
+                  body: "This restores the default process, clears saved versions and line snapshots, and resets profile fields. Export JSON first if you need a backup.",
+                  danger: true,
+                  confirmLabel: "Reset everything",
+                  onConfirm: () => { resetAll(); toast("All data reset", "success"); },
+                })}
+              >Reset data</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,19 @@
 import { create } from "zustand";
-import { saveProject, loadProject, saveVersion, loadVersions, deleteVersion, saveSettings, loadSettings, onStorageError } from "../engine/storage.js";
+import {
+  saveProject,
+  loadProject,
+  saveVersion,
+  loadVersions,
+  deleteVersion,
+  saveSettings,
+  loadSettings,
+  onStorageError,
+  saveLastExportFingerprint,
+  loadLastExportFingerprint,
+  replaceVersions,
+} from "../engine/storage.js";
+import { validateProjectImport } from "../engine/import-schema.js";
+import { computeWorkspaceFingerprint } from "../engine/backup-fingerprint.js";
 import { DEFAULT_STEPS, DEFAULT_TAKT, TEMPLATES } from "../data/templates.js";
 import { INITIAL_ACTIVITY } from "../data/activity.js";
 
@@ -63,6 +77,11 @@ export const useStore = create((set, get) => ({
   palette: false,
   shortcuts: false,
 
+  /** @type {{ open: boolean, title: string, body: string, danger?: boolean, confirmLabel?: string, cancelLabel?: string, onConfirm?: () => void }} */
+  confirmDialog: { open: false, title: "", body: "" },
+  exportBaselineFingerprint: loadLastExportFingerprint() || null,
+  workspaceFingerprint: "",
+
   /* ---- navigation ---- */
   setPage: (page) => {
     page = normalizePage(page);
@@ -75,6 +94,47 @@ export const useStore = create((set, get) => ({
 
   togglePalette: (force) => set(state => ({ palette: typeof force === "boolean" ? force : !state.palette })),
   toggleShortcuts: (force) => set(state => ({ shortcuts: typeof force === "boolean" ? force : !state.shortcuts })),
+
+  askConfirm: (opts) => set({
+    confirmDialog: {
+      open: true,
+      title: opts.title || "Confirm",
+      body: opts.body || "",
+      danger: !!opts.danger,
+      confirmLabel: opts.confirmLabel || "OK",
+      cancelLabel: opts.cancelLabel || "Cancel",
+      onConfirm: opts.onConfirm,
+    },
+  }),
+
+  closeConfirm: () => set({ confirmDialog: { open: false, title: "", body: "" } }),
+
+  _syncWorkspaceFingerprint: () => {
+    const s = get();
+    const fp = computeWorkspaceFingerprint({
+      steps: s.steps,
+      taktTime: s.taktTime,
+      selectedId: s.selectedId,
+      baselineSteps: s.baselineSteps,
+      activity: s.activity,
+      multilines: s.multilines,
+      page: s.page,
+      settings: s.settings,
+      versions: s.versions,
+    });
+    let baseline = s.exportBaselineFingerprint;
+    if (baseline === null) {
+      const disk = loadLastExportFingerprint();
+      baseline = disk || fp;
+    }
+    set({ workspaceFingerprint: fp, exportBaselineFingerprint: baseline });
+  },
+
+  needsExportReminder: () => {
+    const s = get();
+    if (!s.workspaceFingerprint || s.exportBaselineFingerprint === null) return false;
+    return s.workspaceFingerprint !== s.exportBaselineFingerprint;
+  },
 
   /* ---- history (undo/redo) ---- */
   _snapshot: () => ({ steps: deepClone(get().steps), taktTime: get().taktTime }),
@@ -391,12 +451,16 @@ export const useStore = create((set, get) => ({
     });
     localStorage.removeItem("cta_project_v1");
     localStorage.removeItem("cta_versions_v1");
+    saveLastExportFingerprint("");
+    set({ exportBaselineFingerprint: null });
     get().pushActivity("Data reset to defaults", "sys");
+    get()._syncWorkspaceFingerprint();
   },
 
   _autosave: () => {
     const { steps, taktTime, selectedId, baselineSteps, activity, multilines, page } = get();
     saveProject({ steps, taktTime, selectedId, baselineSteps, activity, multilines, page });
+    get()._syncWorkspaceFingerprint();
   },
 
   /* ---- JSON project export / import ---- */
@@ -409,28 +473,47 @@ export const useStore = create((set, get) => ({
     a.download = `cta-project-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+    get()._syncWorkspaceFingerprint();
+    const fp = get().workspaceFingerprint;
+    saveLastExportFingerprint(fp);
+    set({ exportBaselineFingerprint: fp });
     get().toast("Project exported as JSON", "success");
   },
 
   importProjectJSON: async (file) => {
     try {
       const text = await file.text();
-      const obj = JSON.parse(text);
-      if (obj._type !== "cta-project") throw new Error("Not a Cycle Time Analyzer project");
+      let obj;
+      try {
+        obj = JSON.parse(text);
+      } catch {
+        get().toast("Import failed: file is not valid JSON.", "error");
+        return;
+      }
+      const validated = validateProjectImport(obj);
+      if (!validated.ok) {
+        get().toast("Import failed: " + validated.error, "error");
+        return;
+      }
+      const { steps, taktTime, baselineSteps, multilines, settings: impSettings, versions: impVers } = validated.data;
       const prev = get()._snapshot();
+      const nextVersions = impVers != null ? impVers : loadVersions();
+      if (impVers != null) replaceVersions(impVers);
       set({
-        steps: obj.steps || [],
-        taktTime: obj.taktTime || DEFAULT_TAKT,
-        baselineSteps: obj.baselineSteps || obj.steps || [],
-        multilines: obj.multilines || [],
+        steps,
+        taktTime,
+        baselineSteps,
+        multilines,
+        selectedId: steps[0]?.id ?? null,
+        versions: nextVersions,
       });
-      if (obj.settings) get().setSettings(obj.settings);
-      get().pushActivity(`Imported JSON project (${obj.steps?.length || 0} steps)`, "imp");
+      if (impSettings) get().setSettings(impSettings);
+      get().pushActivity(`Imported JSON project (${steps.length} steps)`, "imp");
       get()._push(prev);
       get()._autosave();
       get().toast("Project imported", "success");
     } catch (e) {
-      get().toast("Import failed: " + e.message, "error");
+      get().toast("Import failed: " + (e?.message || String(e)), "error");
     }
   },
 }));
@@ -454,7 +537,10 @@ function applyThemeDom(settings) {
 }
 
 if (typeof window !== "undefined") {
-  setTimeout(() => applyThemeDom(useStore.getState().settings), 0);
+  setTimeout(() => {
+    applyThemeDom(useStore.getState().settings);
+    useStore.getState()._syncWorkspaceFingerprint();
+  }, 0);
   // Listen to hash changes for back/forward
   window.addEventListener("hashchange", () => {
     const hp = hashPage();

@@ -28,6 +28,7 @@ export default function Builder({ schedule }) {
   const taktTime = useStore(s => s.taktTime);
   const toast = useStore(s => s.toast);
   const setPage = useStore(s => s.setPage);
+  const askConfirm = useStore(s => s.askConfirm);
 
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
@@ -172,7 +173,16 @@ export default function Builder({ schedule }) {
           <button className="btn xs" onClick={() => bulkNudgeTime(selectedArr, "machineTime", +5)}><Icon name="arrow-up" size={11}/> Machine +5s</button>
           <button className="btn xs" onClick={() => bulkNudgeTime(selectedArr, "operatorTime", -5)}><Icon name="arrow-down" size={11}/> Op −5s</button>
           <button className="btn xs" onClick={() => bulkNudgeTime(selectedArr, "operatorTime", +5)}><Icon name="arrow-up" size={11}/> Op +5s</button>
-          <button className="btn xs danger" onClick={() => { if (confirm(`Remove ${multiSelect.size} step(s)?`)) { removeSteps(selectedArr); setMultiSelect(new Set()); } }}><Icon name="trash" size={11}/> Delete</button>
+          <button
+            className="btn xs danger"
+            onClick={() => askConfirm({
+              title: "Delete steps?",
+              body: `Remove ${multiSelect.size} selected step(s)? Dependencies are updated automatically.`,
+              danger: true,
+              confirmLabel: "Delete",
+              onConfirm: () => { removeSteps(selectedArr); setMultiSelect(new Set()); },
+            })}
+          ><Icon name="trash" size={11}/> Delete</button>
           <button className="btn xs" onClick={() => setMultiSelect(new Set())}>Clear</button>
         </div>
       )}

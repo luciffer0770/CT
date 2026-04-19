@@ -2,10 +2,19 @@
 const KEY = "cta_project_v1";
 const KEY_VERS = "cta_versions_v1";
 const KEY_SETTINGS = "cta_settings_v1";
+const KEY_EXPORT_FP = "cta_last_export_fp_v1";
 
 const listeners = new Set();
 export function onStorageError(fn) { listeners.add(fn); return () => listeners.delete(fn); }
-function emit(msg, err) { listeners.forEach(l => { try { l(msg, err); } catch {} }); }
+function emit(msg, err) {
+  listeners.forEach(l => {
+    try {
+      l(msg, err);
+    } catch {
+      /* listener failed */
+    }
+  });
+}
 
 function isQuota(e) {
   if (!e) return false;
@@ -69,6 +78,13 @@ export function deleteVersion(id) {
   return versions;
 }
 
+/** Replace the full version list (e.g. after JSON import). */
+export function replaceVersions(versions) {
+  const list = Array.isArray(versions) ? versions.slice(0, 50) : [];
+  safeSet(KEY_VERS, JSON.stringify(list));
+  return list;
+}
+
 export function saveSettings(s) {
   safeSet(KEY_SETTINGS, JSON.stringify(s));
 }
@@ -86,6 +102,20 @@ export function clearAll() {
   localStorage.removeItem(KEY);
   localStorage.removeItem(KEY_VERS);
   localStorage.removeItem(KEY_SETTINGS);
+  localStorage.removeItem(KEY_EXPORT_FP);
+}
+
+export function saveLastExportFingerprint(fp) {
+  if (typeof fp !== "string" || !fp) return false;
+  return safeSet(KEY_EXPORT_FP, fp);
+}
+
+export function loadLastExportFingerprint() {
+  try {
+    return localStorage.getItem(KEY_EXPORT_FP) || "";
+  } catch {
+    return "";
+  }
 }
 
 export function storageUsage() {
@@ -96,6 +126,8 @@ export function storageUsage() {
       const v = localStorage.getItem(k) || "";
       bytes += (k.length + v.length) * 2; // utf-16 approximation
     }
-  } catch {}
+  } catch {
+    /* quota estimate unavailable */
+  }
   return bytes;
 }

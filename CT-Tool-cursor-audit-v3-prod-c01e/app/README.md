@@ -62,4 +62,4 @@ npm run preview
 
 ## GitHub Pages deployment
 
-A workflow at `.github/workflows/deploy-pages.yml` builds and deploys `app/` to GitHub Pages on every push to `main`. Published at `https://<user>.github.io/<repo>/`.
+Workflows under `.github/workflows/` build `CT-Tool-cursor-audit-v3-prod-c01e/app` with `VITE_BASE=/<repo>/` so assets load on project Pages URLs. Deploy runs on pushes to `main` (requires GitHub Pages source: GitHub Actions). Site URL: `https://<user>.github.io/<repo>/`.
