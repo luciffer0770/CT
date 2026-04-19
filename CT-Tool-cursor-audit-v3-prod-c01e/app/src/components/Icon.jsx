@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function Icon({ name, size = 14, stroke = 1.6, className = "", style = {} }) {
   const s = { width: size, height: size, ...style };

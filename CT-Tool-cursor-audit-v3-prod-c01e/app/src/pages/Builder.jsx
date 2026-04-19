@@ -1,7 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import Gantt from "../components/Gantt.jsx";
 import { HBar } from "../components/Charts.jsx";
+import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { suggestNextSteps, validateSteps, suggestOptimization } from "../engine/analytics.js";
 import { importStepsFromFile, exportStepsToExcel, downloadTemplate } from "../engine/excel-lazy.js";
@@ -29,6 +30,7 @@ export default function Builder({ schedule }) {
   const toast = useStore(s => s.toast);
   const setPage = useStore(s => s.setPage);
   const askConfirm = useStore(s => s.askConfirm);
+  const settings = useStore(s => s.settings);
 
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
@@ -119,7 +121,7 @@ export default function Builder({ schedule }) {
 
   return (
     <>
-      <div className="crumbs">WORKSPACE <span className="sep">/</span> LINE-07 <span className="sep">/</span> CYCLE BUILDER</div>
+      <PageCrumbs line={settings.line} pageTitle="CYCLE BUILDER" />
       <div className="page-head">
         <div>
           <h1 className="page-title">Cycle Builder</h1>
@@ -235,7 +237,21 @@ export default function Builder({ schedule }) {
                     {s.bottleneck && <span className="tag red">B/N</span>}
                     {!s.bottleneck && s.critical && <span className="tag blue">CRIT</span>}
                     <button className="icon-btn" style={{ width: 22, height: 22 }} title="Duplicate" onClick={(e) => { e.stopPropagation(); duplicateStep(s.id); }}><Icon name="copy" size={11}/></button>
-                    <button className="icon-btn" style={{ width: 22, height: 22 }} title="Remove" onClick={(e) => { e.stopPropagation(); removeStep(s.id); }}><Icon name="trash" size={11}/></button>
+                    <button
+                      className="icon-btn"
+                      style={{ width: 22, height: 22 }}
+                      title="Remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        askConfirm({
+                          title: "Remove step?",
+                          body: `Delete "${s.name}"? Dependencies on this step are cleared automatically.`,
+                          danger: true,
+                          confirmLabel: "Remove",
+                          onConfirm: () => removeStep(s.id),
+                        });
+                      }}
+                    ><Icon name="trash" size={11}/></button>
                   </div>
                 </div>
                 <div className="step-meta">

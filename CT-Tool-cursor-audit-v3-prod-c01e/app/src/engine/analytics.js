@@ -183,9 +183,7 @@ export function validateSteps(steps) {
       if (!byId[d]) warnings.push({ id: s.id, level: "warn", msg: `${s.name}: unknown dependency "${d}"` });
     });
   });
-  // Circular dependencies
-  const schedule = computeSchedule(steps, 240);
-  // We detect cycles inline in schedule; re-run direct detection for reporting
+  // Circular dependencies (DFS on raw graph)
   const WHITE = 0, GRAY = 1, BLACK = 2;
   const color = {};
   steps.forEach(s => color[s.id] = WHITE);

@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Icon from "../components/Icon.jsx";
 import Gantt from "../components/Gantt.jsx";
 import { Spark } from "../components/Charts.jsx";
+import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { exportKPIsToPDF } from "../engine/pdf-lazy.js";
 import { exportStepsToExcel } from "../engine/excel-lazy.js";
@@ -16,27 +17,51 @@ export default function Dashboard({ schedule }) {
   const saveNewVersion = useStore(s => s.saveNewVersion);
   const resetToBaseline = useStore(s => s.resetToBaseline);
   const askConfirm = useStore(s => s.askConfirm);
+  const settings = useStore(s => s.settings);
 
   const { totalCycleTime, efficiency, bottleneck, vaPct, nvaPct } = schedule;
 
   const trend = useMemo(() => {
     const base = totalCycleTime;
-    return [base - 25, base - 18, base - 11, base - 5, base - 2, base + 1, base - 3, base, base];
+    const n = 9;
+    return Array.from({ length: n }, (_, i) => {
+      const t = i / (n - 1);
+      return Math.max(0, Math.round(base * (0.92 + 0.08 * Math.sin(t * Math.PI * 2))));
+    });
   }, [totalCycleTime]);
+
   const effTrend = useMemo(() => {
-    const base = efficiency || 1;
-    return [base - 4, base - 2, base - 5, base - 1, base + 2, base - 1, base + 1, base, base].map(v => Math.max(0, v));
+    const base = efficiency || 0;
+    const n = 9;
+    return Array.from({ length: n }, (_, i) => {
+      const t = i / (n - 1);
+      return Math.max(0, Math.min(100, Math.round(base + 4 * Math.sin(t * Math.PI * 2))));
+    });
   }, [efficiency]);
+
+  const bottleneckInsight = useMemo(() => {
+    if (!bottleneck) return { pctLine: "", smedLine: "" };
+    const m = Number(bottleneck.machineTime) || 0;
+    const pct = totalCycleTime > 0 ? Math.round((m / totalCycleTime) * 100 * 10) / 10 : 0;
+    const setup = Number(bottleneck.setupTime) || 0;
+    const ext = Math.max(1, Math.round(setup * 0.45));
+    return {
+      pctLine: `About ${pct}% of total cycle time is machine work on this step (rough guide).`,
+      smedLine: setup > 0
+        ? `If ~45% of ${setup}s setup were externalised, you could recover on the order of ${ext}s per unit on the line (illustrative).`
+        : "Low inline setup on the bottleneck — focus on machine / operator balance.",
+    };
+  }, [bottleneck, totalCycleTime]);
 
   const oee = calculateOEE({ availability: 92, performance: Math.min(99, efficiency || 80), quality: 98.5 });
 
   return (
     <>
-      <div className="crumbs">WORKSPACE <span className="sep">/</span> LINE-07 <span className="sep">/</span> DASHBOARD</div>
+      <PageCrumbs line={settings.line} pageTitle="DASHBOARD" />
       <div className="page-head">
         <div>
           <h1 className="page-title">Production Dashboard</h1>
-          <div className="page-sub">Real-time overview of cycle time, efficiency and critical path for Line 07.</div>
+          <div className="page-sub">Live cycle time, efficiency, and critical path for {settings.line} · {settings.shift}.</div>
         </div>
         <div className="toolbar">
           <button
@@ -55,17 +80,17 @@ export default function Dashboard({ schedule }) {
 
       <div className="kpi-grid">
         <div className="kpi accent-blue">
-          <div className="kpi-top"><div className="lbl">Total Cycle Time</div><span className="delta down"><Icon name="arrow-down" size={10}/> 3.2%</span></div>
+          <div className="kpi-top"><div className="lbl">Total Cycle Time</div><span className="delta flat">vs takt</span></div>
           <div className="val">{totalCycleTime}<span className="u">s</span></div>
           <div className="spark"><Spark data={trend} color="#1E40AF"/></div>
         </div>
         <div className="kpi accent-green">
-          <div className="kpi-top"><div className="lbl">Line Efficiency</div><span className="delta up"><Icon name="arrow-up" size={10}/> 1.4%</span></div>
+          <div className="kpi-top"><div className="lbl">Line Efficiency</div><span className="delta flat">VA / CT</span></div>
           <div className="val">{efficiency}<span className="u">%</span></div>
           <div className="spark"><Spark data={effTrend} color="#22C55E"/></div>
         </div>
         <div className="kpi accent-red">
-          <div className="kpi-top"><div className="lbl">Bottlenecks</div><span className="delta flat">stable</span></div>
+          <div className="kpi-top"><div className="lbl">Bottlenecks</div><span className="delta flat">on path</span></div>
           <div className="val">1<span className="u"> of {steps.length}</span></div>
           <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-3)" }}>
             <Icon name="alert" size={12} style={{ color: "var(--red)", verticalAlign: "middle" }}/>{" "}
@@ -73,9 +98,11 @@ export default function Dashboard({ schedule }) {
           </div>
         </div>
         <div className="kpi accent-cyan">
-          <div className="kpi-top"><div className="lbl">Throughput / hr</div><span className="delta up"><Icon name="arrow-up" size={10}/> 2.1%</span></div>
+          <div className="kpi-top"><div className="lbl">Throughput / hr</div><span className="delta flat">at takt</span></div>
           <div className="val">{Math.floor(3600 / Math.max(1, taktTime))}<span className="u"> units</span></div>
-          <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-3)" }}>Target <span className="mono">{Math.floor(3600 / Math.max(1, taktTime)) + 2} u/h</span> · Shift B</div>
+          <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-3)" }}>
+            VA {vaPct}% · NVA {nvaPct}% · Takt {taktTime}s
+          </div>
         </div>
       </div>
 
@@ -133,17 +160,25 @@ export default function Dashboard({ schedule }) {
             </div>
             <div className="insight">
               <div className="ic"><Icon name="zap" size={15}/></div>
-              <div className="txt">Reducing <b>{bottleneck?.name || "—"}</b> machine time by 10% improves total cycle by <b>~6%</b>.</div>
+              <div className="txt">
+                {bottleneck && totalCycleTime > 0 && (
+                  <>
+                    If <b>{bottleneck.name}</b> machine time dropped 10% ({Math.round((bottleneck.machineTime || 0) * 0.1)}s), total cycle would fall by about{" "}
+                    <b>{Math.max(0, Math.round((0.1 * (bottleneck.machineTime || 0) / totalCycleTime) * 100))}%</b> (first-order estimate).
+                  </>
+                )}
+                {!bottleneck && "No bottleneck identified for this model."}
+              </div>
             </div>
-            <div style={{ fontSize: 11, color: "var(--ink-3)" }}>Suggested actions</div>
+            <div style={{ fontSize: 11, color: "var(--ink-3)" }}>Ideas from current data</div>
             <div style={{ display: "grid", gap: 6 }}>
               <div className="ribbon" style={{ margin: 0, padding: "8px 10px" }}>
-                <span className="tag violet">PARALLELIZE</span>
-                <span style={{ fontSize: 11.5 }}>Split robotic fastening into 2 stations</span>
+                <span className="tag violet">FOCUS</span>
+                <span style={{ fontSize: 11.5 }}>{bottleneckInsight.pctLine}</span>
               </div>
               <div className="ribbon" style={{ margin: 0, padding: "8px 10px" }}>
                 <span className="tag cyan">SMED</span>
-                <span style={{ fontSize: 11.5 }}>Move setup 6→3s via tool pre-staging</span>
+                <span style={{ fontSize: 11.5 }}>{bottleneckInsight.smedLine}</span>
               </div>
             </div>
             <button className="btn accent sm" onClick={() => setPage("sim")}>Open in simulation</button>

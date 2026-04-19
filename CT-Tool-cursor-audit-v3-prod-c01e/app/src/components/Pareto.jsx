@@ -1,4 +1,3 @@
-import React from "react";
 import { paretoSteps } from "../engine/analytics.js";
 
 export default function Pareto({ steps, height = 240 }) {

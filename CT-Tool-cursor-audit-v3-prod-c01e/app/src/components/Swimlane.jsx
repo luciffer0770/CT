@@ -1,4 +1,3 @@
-import React from "react";
 import Gantt from "./Gantt.jsx";
 
 export default function Swimlane({ schedule, takt, onStepClick }) {

@@ -1,4 +1,3 @@
-import React from "react";
 
 // Simple layered DAG layout:
 // - rank by longest-path depth from roots

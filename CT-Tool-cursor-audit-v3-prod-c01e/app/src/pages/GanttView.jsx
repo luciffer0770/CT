@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import { Fragment, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import Gantt from "../components/Gantt.jsx";
 import Swimlane from "../components/Swimlane.jsx";
 import ProcessFlow from "../components/ProcessFlow.jsx";
 import { HBar } from "../components/Charts.jsx";
+import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { exportGanttSVG, exportGanttPNG } from "../engine/pdf-lazy.js";
 
 export default function GanttView({ schedule }) {
+  const settings = useStore(s => s.settings);
   const taktTime = useStore(s => s.taktTime);
   const heatmap = useStore(s => s.heatmap);
   const setHeatmap = useStore(s => s.setHeatmap);
@@ -24,7 +26,7 @@ export default function GanttView({ schedule }) {
 
   return (
     <>
-      <div className="crumbs">WORKSPACE <span className="sep">/</span> LINE-07 <span className="sep">/</span> SCHEDULE</div>
+      <PageCrumbs line={settings.line} pageTitle="SCHEDULE" />
       <div className="page-head">
         <div>
           <h1 className="page-title">Schedule</h1>
@@ -108,10 +110,10 @@ export default function GanttView({ schedule }) {
           <div className="card-body">
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               {schedule.steps.filter(s => s.critical).map((s, i, arr) => (
-                <React.Fragment key={s.id}>
+                <Fragment key={s.id}>
                   <span className={`tag ${s.bottleneck ? "red" : "blue"}`} style={{ padding: "4px 8px", fontSize: 11 }}>{s.name}</span>
                   {i < arr.length - 1 && <Icon name="chev-right" size={12} style={{ color: "var(--ink-4)" }}/>}
-                </React.Fragment>
+                </Fragment>
               ))}
             </div>
           </div>

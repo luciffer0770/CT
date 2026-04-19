@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useStore } from "./store/useStore.js";
 import { computeSchedule } from "./engine/calc.js";
 import { Sidebar, TopBar, StatusBar, Toasts } from "./components/Shell.jsx";

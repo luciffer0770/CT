@@ -22,6 +22,11 @@ const csp = [
 
 export default defineConfig({
   base,
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.js"],
+    passWithNoTests: false,
+  },
   plugins: [
     react(),
     {

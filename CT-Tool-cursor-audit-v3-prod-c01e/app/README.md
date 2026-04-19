@@ -33,6 +33,10 @@ Desktop-only React web application for manufacturing engineers to analyze, optim
 - **?** opens shortcut help.
 - **N** on the Cycle Builder adds a new step instantly.
 
+## Tests
+
+- `npm run test` — engine sanity script (`scripts/sanity.mjs`) plus **Vitest** unit tests (`src/**/*.test.js`, e.g. `calc.test.js`).
+
 ## Stack
 - React 19 + Vite (rolldown)
 - Zustand + localStorage (with quota-error surfacing)

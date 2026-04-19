@@ -1,12 +1,13 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Icon from "../components/Icon.jsx";
 import { Donut, HBar, Histogram } from "../components/Charts.jsx";
 import Yamazumi from "../components/Yamazumi.jsx";
 import Pareto from "../components/Pareto.jsx";
+import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import {
-  bottleneckContribution, vaNvaRatio, taktGap, stepImpact,
-  lineBalance, cycleStats, variationAnalysis, suggestOptimization, autoLineBalance,
+  bottleneckContribution, taktGap, stepImpact,
+  lineBalance, variationAnalysis, suggestOptimization, autoLineBalance,
   costPerUnit, wasteTally,
 } from "../engine/analytics.js";
 
@@ -20,18 +21,15 @@ export default function Analytics({ schedule }) {
   const contrib = useMemo(() => bottleneckContribution(schedule), [schedule]);
   const gap = useMemo(() => taktGap(schedule), [schedule]);
   const lb = useMemo(() => lineBalance(steps), [steps]);
-  const stats = useMemo(() => cycleStats(steps), [steps]);
   const variation = useMemo(() => variationAnalysis(steps), [steps]);
   const suggestions = useMemo(() => suggestOptimization(steps, taktTime), [steps, taktTime]);
   const autoBalance = useMemo(() => autoLineBalance(steps, Math.max(2, Object.keys(lb.load).length || 3)), [steps, lb]);
   const cost = useMemo(() => costPerUnit(steps, { laborRate: settings.laborRate, machineRate: settings.machineRate }), [steps, settings.laborRate, settings.machineRate]);
   const wastes = useMemo(() => wasteTally(steps), [steps]);
 
-  const maxDur = Math.max(...steps.map(s => (s.machineTime || 0) + (s.operatorTime || 0) + (s.setupTime || 0)), 1);
-
   return (
     <>
-      <div className="crumbs">WORKSPACE <span className="sep">/</span> LINE-07 <span className="sep">/</span> ANALYTICS</div>
+      <PageCrumbs line={settings.line} pageTitle="ANALYTICS" />
       <div className="page-head">
         <div>
           <h1 className="page-title">Analytics</h1>

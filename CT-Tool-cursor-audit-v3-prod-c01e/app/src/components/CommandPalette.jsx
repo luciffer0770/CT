@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store/useStore.js";
 import Icon from "./Icon.jsx";
 
@@ -16,6 +16,7 @@ export default function CommandPalette() {
   const setSettings = useStore(s => s.setSettings);
   const settings = useStore(s => s.settings);
   const resetToBaseline = useStore(s => s.resetToBaseline);
+  const askConfirm = useStore(s => s.askConfirm);
 
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -40,7 +41,17 @@ export default function CommandPalette() {
       { id: "act-save", kind: "Action", label: "Save version", kbd: "⌘S", run: () => saveNewVersion() },
       { id: "act-undo", kind: "Action", label: "Undo", kbd: "⌘Z", run: () => undo() },
       { id: "act-redo", kind: "Action", label: "Redo", kbd: "⌘⇧Z", run: () => redo() },
-      { id: "act-baseline", kind: "Action", label: "Reset to baseline", run: () => resetToBaseline() },
+      {
+        id: "act-baseline",
+        kind: "Action",
+        label: "Reset to baseline",
+        run: () => askConfirm({
+          title: "Reset to baseline?",
+          body: "Replace the current steps with your saved baseline?",
+          confirmLabel: "Reset to baseline",
+          onConfirm: () => resetToBaseline(),
+        }),
+      },
       { id: "act-json", kind: "Action", label: "Export project JSON", run: () => exportJSON() },
       { id: "act-theme", kind: "Action", label: `Toggle theme (current: ${settings.theme})`, run: () => setSettings({ theme: settings.theme === "dark" ? "light" : "dark" }) },
       { id: "act-compact", kind: "Action", label: `Toggle compact density (${settings.compact ? "on" : "off"})`, run: () => setSettings({ compact: !settings.compact }) },
@@ -52,7 +63,7 @@ export default function CommandPalette() {
       run: () => { setSelectedId(s.id); setPage("builder"); },
     }));
     return base.concat(stepCmds);
-  }, [steps, settings, setPage, setSelectedId, saveNewVersion, undo, redo, exportJSON, addStep, resetToBaseline, setSettings]);
+  }, [steps, settings, setPage, setSelectedId, saveNewVersion, undo, redo, exportJSON, addStep, resetToBaseline, setSettings, askConfirm]);
 
   const filtered = useMemo(() => {
     if (!q.trim()) return commands;
@@ -60,7 +71,9 @@ export default function CommandPalette() {
     return commands.filter(c => c.label.toLowerCase().includes(ql) || c.kind.toLowerCase().includes(ql));
   }, [q, commands]);
 
-  useEffect(() => { if (cursor >= filtered.length) setCursor(0); }, [filtered.length]);
+  useEffect(() => {
+    setCursor(c => (filtered.length === 0 ? 0 : Math.min(c, filtered.length - 1)));
+  }, [filtered.length]);
 
   if (!open) return null;
 

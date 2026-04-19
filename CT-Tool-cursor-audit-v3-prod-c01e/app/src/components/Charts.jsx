@@ -1,4 +1,3 @@
-import React from "react";
 
 export function Spark({ data, color = "#1E40AF", height = 36, width = 120, fill = true }) {
   if (!data || !data.length) return null;
@@ -20,31 +19,32 @@ export function Donut({ parts, size = 140, thickness = 22, centerLabel, centerVa
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
   let acc = 0;
+  const arcs = parts.map((p, i) => {
+    const frac = p.value / total;
+    const len = c * frac;
+    const gap = c - len;
+    const off = c * 0.25 - c * acc;
+    acc += frac;
+    return { p, i, len, gap, off };
+  });
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#EEF1F7" strokeWidth={thickness} />
-      {parts.map((p, i) => {
-        const frac = p.value / total;
-        const len = c * frac;
-        const gap = c - len;
-        const off = c * 0.25 - c * acc;
-        acc += frac;
-        return (
-          <circle
-            key={i}
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={p.color}
-            strokeWidth={thickness}
-            strokeDasharray={`${len} ${gap}`}
-            strokeDashoffset={off}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            style={{ transition: "stroke-dasharray 300ms var(--ease)" }}
-          />
-        );
-      })}
+      {arcs.map(({ p, i, len, gap, off }) => (
+        <circle
+          key={i}
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={p.color}
+          strokeWidth={thickness}
+          strokeDasharray={`${len} ${gap}`}
+          strokeDashoffset={off}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: "stroke-dasharray 300ms var(--ease)" }}
+        />
+      ))}
       <text x={size / 2} y={size / 2 - 4} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="18" fontWeight="600" fill="currentColor">{centerValue ?? `${parts[0]?.value ?? 0}%`}</text>
       <text x={size / 2} y={size / 2 + 14} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" letterSpacing="0.14em" fill="#8A92A6">{centerLabel || "VALUE-ADDED"}</text>
     </svg>
@@ -117,7 +117,7 @@ export function Histogram({ totalCT, takt, samples = 30 }) {
 }
 
 // Simple line chart (used for trend over steps)
-export function LineChart({ data, height = 160, color = "#1E40AF", yLabel = "" }) {
+export function LineChart({ data, height = 160, color = "#1E40AF", yLabel: _yLabel = "" }) {
   const w = 600;
   if (!data?.length) return null;
   const max = Math.max(...data.map(d => d.value));

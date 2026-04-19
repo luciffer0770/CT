@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import Gantt from "../components/Gantt.jsx";
 import { useStore } from "../store/useStore.js";
@@ -76,7 +76,14 @@ export default function Reports({ schedule }) {
             </button>
           )}
           <button className="btn" onClick={() => window.print()}><Icon name="report" size={13}/> Print</button>
-          <button className="btn" onClick={() => exportStepsToExcel(steps, reportSchedule)}><Icon name="download" size={13}/> Export Excel</button>
+          <button
+            className="btn"
+            onClick={() => exportStepsToExcel(
+              selected?.version ? (selected.version.project.steps || []) : steps,
+              reportSchedule,
+              `cta-report-${(selected?.id || "export").replace(/[^\w.-]+/g, "_")}.xlsx`,
+            )}
+          ><Icon name="download" size={13}/> Export Excel</button>
           <button className="btn primary" onClick={onExportPDF}><Icon name="download" size={13}/> Export PDF</button>
         </div>
       </div>
@@ -127,7 +134,7 @@ export default function Reports({ schedule }) {
                 </div>
                 <div className="mono muted" style={{ textAlign: "right", fontSize: 10, color: "#5B6274" }}>
                   <div>DATE&nbsp;&nbsp;&nbsp;{new Date().toLocaleDateString()}</div>
-                  <div>REV&nbsp;&nbsp;&nbsp;&nbsp;v{(versions.length || 14)}</div>
+                  <div>REV&nbsp;&nbsp;&nbsp;&nbsp;v{versions.length}</div>
                   <div>ID&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{selected?.id}</div>
                 </div>
               </div>

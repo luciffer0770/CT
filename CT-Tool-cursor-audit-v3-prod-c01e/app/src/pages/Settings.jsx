@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import { useStore } from "../store/useStore.js";
 import { TEMPLATES } from "../data/templates.js";
@@ -50,7 +50,9 @@ export default function Settings() {
           <input ref={jsonRef} type="file" accept=".json" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importProjectJSON(f); e.target.value = ""; }}/>
           <button className="btn" onClick={() => jsonRef.current?.click()}><Icon name="upload" size={13}/> Import JSON</button>
           <button className="btn" onClick={exportProjectJSON}><Icon name="download" size={13}/> Export JSON</button>
-          <button className="btn accent" onClick={() => toast("All changes are auto-saved", "success")}><Icon name="check" size={13}/> Saved</button>
+          <button type="button" className="btn ghost" disabled title="Changes save automatically to this browser">
+            <Icon name="check" size={13}/> Auto-saved
+          </button>
         </div>
       </div>
 

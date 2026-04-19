@@ -12,7 +12,7 @@ const reactRelax = {
 }
 
 export default [
-  { ignores: ['dist', 'node_modules'] },
+  { ignores: ['dist', 'node_modules', 'src/**/*.test.js'] },
   {
     files: ['vite.config.js', 'scripts/**/*.mjs'],
     languageOptions: {

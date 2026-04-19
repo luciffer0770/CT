@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Icon from "../components/Icon.jsx";
+import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { takt as taktCalc, costPerUnit, kanbanBins, paretoSteps } from "../engine/analytics.js";
 
@@ -8,7 +9,6 @@ export default function Tools({ schedule }) {
   const setSettings = useStore(s => s.setSettings);
   const setTakt = useStore(s => s.setTakt);
   const steps = useStore(s => s.steps);
-  const updateStep = useStore(s => s.updateStep);
   const applySMED = useStore(s => s.applySMED);
   const toast = useStore(s => s.toast);
 
@@ -31,18 +31,18 @@ export default function Tools({ schedule }) {
   const [internal, setInternal] = useState(curStep ? Math.round((curStep.setupTime || 0) * 0.4) : 0);
   const [external, setExternal] = useState(curStep ? Math.round((curStep.setupTime || 0) * 0.6) : 0);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (curStep) {
       setInternal(Math.round((curStep.setupInternal ?? curStep.setupTime * 0.4)));
       setExternal(Math.round((curStep.setupExternal ?? curStep.setupTime * 0.6)));
     }
-  }, [smedStep]); // eslint-disable-line
+  }, [smedStep, curStep]);
 
   const savings = curStep ? (curStep.setupTime || 0) - internal : 0;
 
   return (
     <>
-      <div className="crumbs">WORKSPACE <span className="sep">/</span> {settings.line} <span className="sep">/</span> TOOLS</div>
+      <PageCrumbs line={settings.line} pageTitle="TOOLS" />
       <div className="page-head">
         <div>
           <h1 className="page-title">Industrial Tools</h1>

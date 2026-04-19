@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import Icon from "./Icon.jsx";
 import { useStore } from "../store/useStore.js";
 
@@ -75,7 +75,7 @@ export function TopBar({ schedule }) {
   const canUndo = useStore(s => s._past.length > 0);
   const canRedo = useStore(s => s._future.length > 0);
   const saveNewVersion = useStore(s => s.saveNewVersion);
-  const [search, setSearch] = React.useState("");
+  const [search, setSearch] = useState("");
   const setPage = useStore(s => s.setPage);
   const steps = useStore(s => s.steps);
   const setSelectedId = useStore(s => s.setSelectedId);
@@ -168,8 +168,8 @@ export function StatusBar({ schedule }) {
   const steps = useStore(s => s.steps);
   const settings = useStore(s => s.settings);
   const versionCount = useStore(s => s.versions.length);
-  const [time, setTime] = React.useState(new Date());
-  React.useEffect(() => {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
@@ -186,7 +186,7 @@ export function StatusBar({ schedule }) {
       </span>
       <span className="sep"/>
       <span>{settings.line} / {settings.shift} / {time.toLocaleTimeString()}</span>
-      <span style={{ marginLeft: "auto" }}>v{versionCount || 14}</span>
+      <span style={{ marginLeft: "auto" }}>v{versionCount}</span>
     </div>
   );
 }

@@ -95,7 +95,6 @@ export function computeSchedule(rawSteps, taktTime = 240) {
   const cycles = detectCycles(steps);
   if (cycles.length > 0) {
     // break naively: drop any dependency that would create a cycle
-    const seen = new Set();
     for (const s of steps) {
       const safeDeps = [];
       for (const d of s.dependencies) {

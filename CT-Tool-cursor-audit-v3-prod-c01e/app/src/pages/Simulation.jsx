@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Icon from "../components/Icon.jsx";
 import Gantt from "../components/Gantt.jsx";
+import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { computeSchedule } from "../engine/calc.js";
-import { whatIfRemove, autoLineBalance } from "../engine/analytics.js";
+import { autoLineBalance } from "../engine/analytics.js";
 
 export default function Simulation({ schedule }) {
   const steps = useStore(s => s.steps);
@@ -13,6 +14,8 @@ export default function Simulation({ schedule }) {
   const setSteps = useStore(s => s.setSteps);
   const toast = useStore(s => s.toast);
   const saveNewVersion = useStore(s => s.saveNewVersion);
+  const settings = useStore(s => s.settings);
+  const askConfirm = useStore(s => s.askConfirm);
 
   // Per-step adjustments: { [id]: { m, o, s } }
   const [adj, setAdj] = useState({});
@@ -41,16 +44,37 @@ export default function Simulation({ schedule }) {
   const effDelta = simState.efficiency - baselineSchedule.efficiency;
 
   const apply = () => {
-    setSteps(simSteps);
-    setAdj({});
-    setRemovedIds(new Set());
-    toast("Simulation applied to line", "success");
+    askConfirm({
+      title: "Apply simulation to line?",
+      body: "Replace the live process with the simulated times and removals. You can undo afterward (⌘Z).",
+      confirmLabel: "Apply",
+      onConfirm: () => {
+        setSteps(simSteps);
+        setAdj({});
+        setRemovedIds(new Set());
+        toast("Simulation applied to line", "success");
+      },
+    });
   };
-  const reset = () => { setAdj({}); setRemovedIds(new Set()); };
+  const reset = () => {
+    askConfirm({
+      title: "Reset simulation?",
+      body: "Discard all sliders and removed-step toggles in this view?",
+      confirmLabel: "Reset",
+      onConfirm: () => { setAdj({}); setRemovedIds(new Set()); },
+    });
+  };
 
   const setAsBaseline = () => {
-    setBaseline(steps);
-    toast("Baseline updated to current line", "success");
+    askConfirm({
+      title: "Update baseline?",
+      body: "Save the current live line as the new baseline used for “reset to baseline”.",
+      confirmLabel: "Set baseline",
+      onConfirm: () => {
+        setBaseline(steps);
+        toast("Baseline updated to current line", "success");
+      },
+    });
   };
 
   const monteCarlo = () => {
@@ -78,13 +102,20 @@ export default function Simulation({ schedule }) {
   };
 
   const autoBalance = () => {
-    const stations = autoLineBalance(simSteps, 3);
-    const newSteps = simSteps.map(s => {
-      const station = stations.find(st => st.steps.includes(s.id));
-      return { ...s, stationId: station?.id || s.stationId };
+    askConfirm({
+      title: "Auto line-balance?",
+      body: "Reassign station IDs on the live line from the current simulation state (3 stations).",
+      confirmLabel: "Balance",
+      onConfirm: () => {
+        const stations = autoLineBalance(simSteps, 3);
+        const newSteps = simSteps.map(s => {
+          const station = stations.find(st => st.steps.includes(s.id));
+          return { ...s, stationId: station?.id || s.stationId };
+        });
+        setSteps(newSteps);
+        toast("Auto line-balancing applied", "success");
+      },
     });
-    setSteps(newSteps);
-    toast("Auto line-balancing applied", "success");
   };
 
   const removeStepSim = (id) => {
@@ -95,7 +126,7 @@ export default function Simulation({ schedule }) {
 
   return (
     <>
-      <div className="crumbs">WORKSPACE <span className="sep">/</span> LINE-07 <span className="sep">/</span> SIMULATION</div>
+      <PageCrumbs line={settings.line} pageTitle="SIMULATION" />
       <div className="page-head">
         <div>
           <h1 className="page-title">Simulation</h1>
@@ -107,7 +138,23 @@ export default function Simulation({ schedule }) {
           <button className="btn" onClick={autoBalance}><Icon name="shuffle" size={13}/> Auto balance</button>
           <button className="btn" onClick={setAsBaseline}><Icon name="save" size={13}/> Set baseline</button>
           <button className="btn accent" onClick={apply}><Icon name="check" size={13}/> Apply to line</button>
-          <button className="btn primary" onClick={() => { apply(); saveNewVersion(); }}><Icon name="save" size={13}/> Apply + Save</button>
+          <button
+            className="btn primary"
+            onClick={() => {
+              askConfirm({
+                title: "Apply and save version?",
+                body: "Apply the simulation to the live line and save a new named version?",
+                confirmLabel: "Apply and save",
+                onConfirm: () => {
+                  setSteps(simSteps);
+                  setAdj({});
+                  setRemovedIds(new Set());
+                  saveNewVersion("After simulation");
+                  toast("Applied and saved version", "success");
+                },
+              });
+            }}
+          ><Icon name="save" size={13}/> Apply + Save</button>
         </div>
       </div>
 

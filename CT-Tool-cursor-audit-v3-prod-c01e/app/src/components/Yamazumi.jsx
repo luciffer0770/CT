@@ -1,4 +1,3 @@
-import React from "react";
 import { yamazumiByStation } from "../engine/analytics.js";
 
 export default function Yamazumi({ steps, takt, height = 260 }) {
