@@ -33,6 +33,10 @@ jobs:
         working-directory: CT-Tool-cursor-audit-v3-prod-c01e/app
         run: npm ci
 
+      - name: npm audit (informational)
+        working-directory: CT-Tool-cursor-audit-v3-prod-c01e/app
+        run: npm audit || true
+
       - name: Lint
         working-directory: CT-Tool-cursor-audit-v3-prod-c01e/app
         run: npm run lint

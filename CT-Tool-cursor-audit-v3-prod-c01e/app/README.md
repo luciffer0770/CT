@@ -62,4 +62,14 @@ npm run preview
 
 ## GitHub Pages deployment
 
-Workflows under `.github/workflows/` build `CT-Tool-cursor-audit-v3-prod-c01e/app` with `VITE_BASE=/<repo>/` so assets load on project Pages URLs. Deploy runs on pushes to `main` (requires GitHub Pages source: GitHub Actions). Site URL: `https://<user>.github.io/<repo>/`.
+1. In the GitHub repo: **Settings → Pages → Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
+2. Push to **`main`**: the workflow **Deploy to GitHub Pages** builds `CT-Tool-cursor-audit-v3-prod-c01e/app` with `VITE_BASE=/<repo>/`, writes **`404.html`** for SPA routing, and patches **`manifest.webmanifest`** `start_url` / `scope` for the same base path.
+3. After the first run succeeds, open **`https://<user>.github.io/<repo>/`** (trailing slash is fine).
+
+See **`SECURITY.md`** at the repo root for threat model (static site vs local data).
+
+### Local preview with GitHub Pages–style base
+
+```bash
+VITE_BASE=/your-repo/ npm run build && npm run preview -- --base /your-repo/
+```
