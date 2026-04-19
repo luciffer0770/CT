@@ -68,6 +68,11 @@ export default function Gantt({
     byId[s.id] = s;
   });
 
+  const maxWaitForHeat = useMemo(
+    () => Math.max(1, ...steps.map((s) => Number(s.waitTime) || 0)),
+    [steps],
+  );
+
   const totalRows = steps.length;
   /** Dependency lines need full-row geometry; keep full render when showing deps */
   const useVirtual = virtualize && totalRows > virtualMaxRows && !showDeps;
@@ -114,8 +119,11 @@ export default function Gantt({
 
   const renderRow = (s, i) => {
     const globalIndex = useVirtual ? startIdx + i : i;
-    const delayRatio =
-      (s.cycleTime || 1) === 0 ? 0 : Math.min(1, (s.waitTime || 0) / Math.max(1, s.cycleTime));
+    const delayRatio = heatmap
+      ? Math.min(1, (Number(s.waitTime) || 0) / maxWaitForHeat)
+      : (s.cycleTime || 1) === 0
+        ? 0
+        : Math.min(1, (s.waitTime || 0) / Math.max(1, s.cycleTime));
     const heatStyle = heatmap
       ? {
           background: `linear-gradient(90deg, rgba(34,197,94,${1 - delayRatio}) 0%, rgba(225,29,46,${delayRatio}) 100%)`,

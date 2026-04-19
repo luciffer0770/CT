@@ -69,7 +69,7 @@ export const TEMPLATES = [
   {
     id: "tmpl-long-trail-42",
     name: "Assembly trail — 42 steps (demo)",
-    description: "Linear chain across 8 stations — stress-test schedule, Gantt length, and station balance.",
+    description: "Linear chain across 8 stations. Enable Serialize same station in Settings for queue wait + heatmap; use Value-added checkbox for VA/NVA KPIs.",
     sector: "Demo",
     steps: LONG_TRAIL_42_STEPS,
     taktTime: 280,

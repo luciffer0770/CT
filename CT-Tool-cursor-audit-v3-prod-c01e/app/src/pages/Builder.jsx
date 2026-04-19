@@ -382,9 +382,14 @@ export default function Builder({ schedule }) {
                     </label>
                   </div>
 
-                  <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <label style={{ fontSize: 11, display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer" }}>
                     <input type="checkbox" checked={sel.isValueAdded !== false} onChange={(e) => updateStep(sel.id, { isValueAdded: e.target.checked })}/>
-                    <span>Value-added</span>
+                    <span>
+                      Value-added (VA)
+                      <span className="muted" style={{ display: "block", fontWeight: 400, marginTop: 4, lineHeight: 1.35 }}>
+                        Uncheck to mark this step as <b>non-value-added</b> for VA/NVA % and line efficiency. It does not remove machine/operator/setup time from the schedule — it changes how work is classified in KPIs and reports.
+                      </span>
+                    </span>
                   </label>
 
                   <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 4 }}>Waste classification (Lean)</div>
@@ -401,12 +406,14 @@ export default function Builder({ schedule }) {
 
                   <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>Notes</div>
                   <textarea
-                    className="input"
+                    className="input allow-select"
                     style={{ minHeight: 60, resize: "vertical", fontFamily: "inherit" }}
-                    value={sel.notes || ""}
+                    value={(steps.find((x) => x.id === sel.id)?.notes ?? sel.notes) || ""}
                     onChange={(e) => updateStep(sel.id, { notes: e.target.value })}
                     onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                     placeholder="Engineering notes, constraints, or observations…"
                   />
 

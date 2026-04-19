@@ -40,13 +40,17 @@ export default function Dashboard({ schedule }) {
   }, [efficiency]);
 
   const bottleneckInsight = useMemo(() => {
-    if (!bottleneck) return { pctLine: "", smedLine: "" };
+    if (!bottleneck) return { pctLine: "", smedLine: "", trimPctLine: "" };
     const m = Number(bottleneck.machineTime) || 0;
-    const pct = totalCycleTime > 0 ? Math.round((m / totalCycleTime) * 100 * 10) / 10 : 0;
+    const ct = Number(bottleneck.cycleTime) || 0;
+    const pctOfLine = totalCycleTime > 0 ? Math.round((ct / totalCycleTime) * 100 * 10) / 10 : 0;
+    const trimPct =
+      totalCycleTime > 0 ? Math.round(((0.1 * m) / totalCycleTime) * 100 * 10) / 10 : 0;
     const setup = Number(bottleneck.setupTime) || 0;
     const ext = Math.max(1, Math.round(setup * 0.45));
     return {
-      pctLine: `About ${pct}% of total cycle time is machine work on this step (rough guide).`,
+      pctLine: `This step’s duration is about ${pctOfLine}% of total cycle time (${ct}s of ${totalCycleTime}s).`,
+      trimPctLine: trimPct,
       smedLine: setup > 0
         ? `If ~45% of ${setup}s setup were externalised, you could recover on the order of ${ext}s per unit on the line (illustrative).`
         : "Low inline setup on the bottleneck — focus on machine / operator balance.",
@@ -178,7 +182,7 @@ export default function Dashboard({ schedule }) {
                 {bottleneck && totalCycleTime > 0 && (
                   <>
                     If <b>{bottleneck.name}</b> machine time dropped 10% ({Math.round((bottleneck.machineTime || 0) * 0.1)}s), total cycle would fall by about{" "}
-                    <b>{Math.max(0, Math.round((0.1 * (bottleneck.machineTime || 0) / totalCycleTime) * 100))}%</b> (first-order estimate).
+                    <b>{bottleneckInsight.trimPctLine ?? 0}%</b> (first-order estimate — only applies if this step stays on the critical path after the change).
                   </>
                 )}
                 {!bottleneck && "No bottleneck identified for this model."}

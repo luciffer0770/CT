@@ -3,8 +3,8 @@ import { computeSchedule, cycleTimeOf, detectCycles, topoOrder } from "./calc.js
 import { DEFAULT_STEPS } from "../data/templates.js";
 
 describe("cycleTimeOf", () => {
-  it("sums machine, operator, and setup", () => {
-    expect(cycleTimeOf({ machineTime: 10, operatorTime: 5, setupTime: 2 })).toBe(17);
+  it("sums machine, operator, setup, and transfer", () => {
+    expect(cycleTimeOf({ machineTime: 10, operatorTime: 5, setupTime: 2, transferTime: 3 })).toBe(20);
   });
   it("treats missing numbers as zero", () => {
     expect(cycleTimeOf({})).toBe(0);

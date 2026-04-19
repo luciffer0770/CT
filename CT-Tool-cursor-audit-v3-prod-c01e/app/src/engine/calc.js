@@ -10,7 +10,13 @@
 export function cycleTimeOf(step) {
   // External setup is performed during the previous step's cycle (SMED),
   // so it does NOT contribute to the in-line cycle time.
-  return (Number(step.machineTime) || 0) + (Number(step.operatorTime) || 0) + (Number(step.setupTime) || 0);
+  // Transfer / move time is part of the on-line duration for scheduling.
+  return (
+    (Number(step.machineTime) || 0) +
+    (Number(step.operatorTime) || 0) +
+    (Number(step.setupTime) || 0) +
+    (Number(step.transferTime) || 0)
+  );
 }
 
 // Detect cycles in dependency graph; returns list of offending step ids or []
@@ -83,6 +89,8 @@ export function computeSchedule(rawSteps, taktTime = 240, options = {}) {
     stationId: s.stationId || null,
     variability: Number(s.variability) || 0,
     type: s.type || "machine",
+    notes: s.notes != null ? String(s.notes) : "",
+    wasteType: s.wasteType || null,
   }));
 
   // cycleTime per step
@@ -279,9 +287,10 @@ export function computeSchedule(rawSteps, taktTime = 240, options = {}) {
   const sumMachine = steps.reduce((a, s) => a + s.machineTime, 0);
   const sumOp = steps.reduce((a, s) => a + s.operatorTime, 0);
   const sumSetup = steps.reduce((a, s) => a + s.setupTime, 0);
+  const sumTransfer = steps.reduce((a, s) => a + (Number(s.transferTime) || 0), 0);
   const sumVA = steps.reduce((a, s) => a + (s.isValueAdded ? s.machineTime + s.operatorTime : 0), 0);
-  const sumNVA = (sumMachine + sumOp + sumSetup) - sumVA;
-  const effectiveWork = sumMachine + sumOp + sumSetup;
+  const effectiveWork = sumMachine + sumOp + sumSetup + sumTransfer;
+  const sumNVA = effectiveWork - sumVA;
 
   const vaPct = effectiveWork === 0 ? 0 : Math.round((sumVA / effectiveWork) * 100);
   const nvaPct = 100 - vaPct;
@@ -301,7 +310,7 @@ export function computeSchedule(rawSteps, taktTime = 240, options = {}) {
     efficiency,
     taktEfficiency,
     bottleneck,
-    sumMachine, sumOp, sumSetup, sumVA, sumNVA,
+    sumMachine, sumOp, sumSetup, sumTransfer, sumVA, sumNVA,
     vaPct, nvaPct,
     totalWait,
     groups,
