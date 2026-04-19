@@ -15,6 +15,8 @@ export default function GanttView({ schedule }) {
   const setHeatmap = useStore(s => s.setHeatmap);
   const showDeps = useStore(s => s.showDeps);
   const setShowDeps = useStore(s => s.setShowDeps);
+  const highlightCriticalPath = useStore(s => s.highlightCriticalPath);
+  const setHighlightCriticalPath = useStore(s => s.setHighlightCriticalPath);
   const setPage = useStore(s => s.setPage);
   const setSelectedId = useStore(s => s.setSelectedId);
   const [tickEvery, setTickEvery] = useState(20);
@@ -40,6 +42,9 @@ export default function GanttView({ schedule }) {
           </div>
           <button className={`btn ${showDeps ? "accent" : ""}`} onClick={() => setShowDeps(!showDeps)}><Icon name="link" size={13}/> Deps</button>
           <button className={`btn ${heatmap ? "accent" : ""}`} onClick={() => setHeatmap(!heatmap)}><Icon name="flame" size={13}/> Heatmap</button>
+          <button className={`btn ${highlightCriticalPath ? "accent" : ""}`} onClick={() => setHighlightCriticalPath(!highlightCriticalPath)} title="Highlight critical-path rows in the Gantt">
+            <Icon name="zap" size={13}/> Critical path
+          </button>
           <button className="btn" onClick={() => setTickEvery(Math.max(5, tickEvery - 5))}><Icon name="minus" size={13}/></button>
           <span className="chip mono">{tickEvery}s/tick</span>
           <button className="btn" onClick={() => setTickEvery(Math.min(60, tickEvery + 5))}><Icon name="plus" size={13}/></button>
@@ -74,7 +79,7 @@ export default function GanttView({ schedule }) {
             <span className="sub">0 → {schedule.totalCycleTime}s</span>
           </div>
           <div className="card-body tight" style={{ minHeight: 500 }}>
-            <Gantt steps={schedule.steps} totalCT={schedule.totalCycleTime} takt={taktTime} tickEvery={tickEvery} labelWidth={180} showDeps={showDeps} heatmap={heatmap} onStepClick={jumpToBuilder}/>
+            <Gantt steps={schedule.steps} totalCT={schedule.totalCycleTime} takt={taktTime} tickEvery={tickEvery} labelWidth={180} showDeps={showDeps} heatmap={heatmap} highlightCritical={highlightCriticalPath} onStepClick={jumpToBuilder}/>
           </div>
         </div>
       )}

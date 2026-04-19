@@ -8,7 +8,7 @@ import { useStore } from "../store/useStore.js";
 import {
   bottleneckContribution, taktGap, stepImpact,
   lineBalance, variationAnalysis, suggestOptimization, autoLineBalance,
-  costPerUnit, wasteTally,
+  costPerUnit, wasteTally, stationOverloadVsTakt,
 } from "../engine/analytics.js";
 
 export default function Analytics({ schedule }) {
@@ -26,6 +26,7 @@ export default function Analytics({ schedule }) {
   const autoBalance = useMemo(() => autoLineBalance(steps, Math.max(2, Object.keys(lb.load).length || 3)), [steps, lb]);
   const cost = useMemo(() => costPerUnit(steps, { laborRate: settings.laborRate, machineRate: settings.machineRate }), [steps, settings.laborRate, settings.machineRate]);
   const wastes = useMemo(() => wasteTally(steps), [steps]);
+  const overload = useMemo(() => stationOverloadVsTakt(steps, taktTime), [steps, taktTime]);
 
   return (
     <>
@@ -133,6 +134,21 @@ export default function Analytics({ schedule }) {
               <Stat k="Min" v={`${lb.min}s`}/>
               <Stat k="Avg" v={`${Math.round(lb.avg)}s`}/>
             </div>
+          </div>
+        </div>
+
+        <div className="card col-6">
+          <div className="card-head"><h3>Station vs takt</h3><span className="sub">OVERLOAD HINT</span></div>
+          <div className="card-body" style={{ fontSize: 12, color: "var(--ink-2)" }}>
+            {overload.filter((o) => o.overloaded).length === 0 ? (
+              <div className="muted">No station has total work time above takt ({taktTime}s). Assign stations for meaningful balance.</div>
+            ) : (
+              overload.filter((o) => o.overloaded).map((o) => (
+                <div key={o.station} style={{ marginBottom: 8 }}>
+                  <span className="tag red">{o.station}</span> {o.loadSec}s work vs {taktTime}s takt (+{o.overBy.toFixed(0)}s)
+                </div>
+              ))
+            )}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 # Cycle Time Analyzer — Industrial Edition
 
-Desktop-only React web application for manufacturing engineers to analyze, optimize, and simulate production cycle time. Designed to feel like a Bosch / Siemens internal MES/SCADA tool — data-dense, engineering-first, zero ornament.
+Desktop-only React web application for manufacturing engineers to analyze, optimize, and simulate production cycle time. Data-dense, engineering-first, minimal ornament — similar in spirit to internal MES/SCADA tooling.
 
 ## Features
 

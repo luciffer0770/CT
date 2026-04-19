@@ -181,6 +181,19 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Scheduling constraints */}
+        <div className="card col-6">
+          <div className="card-head"><h3>Scheduling</h3><span className="sub">ENGINE</span></div>
+          <div className="card-body" style={{ display: "grid", gap: 14 }}>
+            <Row
+              label="Serialize same station"
+              help="When on, steps sharing a station ID run one-after-another on that station (single machine). Off = unlimited parallel capacity per station (default)."
+            >
+              <Toggle value={!!settings.serializeStations} onChange={(v) => set({ serializeStations: v })}/>
+            </Row>
+          </div>
+        </div>
+
         {/* Rates */}
         <div className="card col-6">
           <div className="card-head"><h3>Rates</h3><span className="sub">COST MODEL</span></div>

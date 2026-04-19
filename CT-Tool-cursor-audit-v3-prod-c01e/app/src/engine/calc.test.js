@@ -39,6 +39,7 @@ describe("computeSchedule", () => {
     expect(s.bottleneck).toBeTruthy();
     expect(s.bottleneck.name.length).toBeGreaterThan(0);
     expect(s.steps.every((x) => x.endTime >= x.startTime)).toBe(true);
+    expect(s.criticalPathWorkSum).toBeGreaterThan(0);
   });
 
   it("aligns parallel group members to the same start", () => {

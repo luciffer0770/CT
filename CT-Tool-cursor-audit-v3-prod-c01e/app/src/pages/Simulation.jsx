@@ -17,11 +17,26 @@ export default function Simulation({ schedule }) {
   const settings = useStore(s => s.settings);
   const askConfirm = useStore(s => s.askConfirm);
 
+  const schedOpts = useMemo(() => {
+    const stationMeta = {};
+    if (settings.serializeStations) {
+      const seen = new Set();
+      [...baselineSteps, ...steps].forEach((st) => {
+        const sid = st.stationId;
+        if (sid && !seen.has(sid)) {
+          seen.add(sid);
+          stationMeta[sid] = { machines: 1 };
+        }
+      });
+    }
+    return { serializeStations: !!settings.serializeStations, stationMeta };
+  }, [settings.serializeStations, baselineSteps, steps]);
+
   // Per-step adjustments: { [id]: { m, o, s } }
   const [adj, setAdj] = useState({});
   const [removedIds, setRemovedIds] = useState(new Set());
 
-  const baselineSchedule = useMemo(() => computeSchedule(baselineSteps, taktTime), [baselineSteps, taktTime]);
+  const baselineSchedule = useMemo(() => computeSchedule(baselineSteps, taktTime, schedOpts), [baselineSteps, taktTime, schedOpts]);
 
   const simSteps = useMemo(() => {
     return steps
@@ -38,7 +53,7 @@ export default function Simulation({ schedule }) {
       });
   }, [steps, adj, removedIds]);
 
-  const simState = useMemo(() => computeSchedule(simSteps, taktTime), [simSteps, taktTime]);
+  const simState = useMemo(() => computeSchedule(simSteps, taktTime, schedOpts), [simSteps, taktTime, schedOpts]);
 
   const ctDelta = simState.totalCycleTime - baselineSchedule.totalCycleTime;
   const effDelta = simState.efficiency - baselineSchedule.efficiency;
@@ -90,7 +105,7 @@ export default function Simulation({ schedule }) {
           operatorTime: Math.max(0, (s.operatorTime || 0) * factor),
         };
       });
-      const sc = computeSchedule(noisy, taktTime);
+      const sc = computeSchedule(noisy, taktTime, schedOpts);
       runs.push(sc.totalCycleTime);
     }
     runs.sort((a, b) => a - b);
@@ -98,7 +113,9 @@ export default function Simulation({ schedule }) {
     const max = runs[runs.length - 1];
     const avg = runs.reduce((a, b) => a + b, 0) / runs.length;
     const p95 = runs[Math.floor(runs.length * 0.95)];
-    toast(`1,000 trials: avg ${avg.toFixed(1)}s · p95 ${p95.toFixed(1)}s · range [${min.toFixed(0)}, ${max.toFixed(0)}]`, "success");
+    const overTakt = runs.filter((ct) => ct > taktTime).length;
+    const pOver = (overTakt / runs.length) * 100;
+    toast(`1,000 trials: avg ${avg.toFixed(1)}s · p95 ${p95.toFixed(1)}s · range [${min.toFixed(0)}, ${max.toFixed(0)}] · P(CT>takt) ${pOver.toFixed(1)}% (${overTakt} runs)`, "success");
   };
 
   const autoBalance = () => {

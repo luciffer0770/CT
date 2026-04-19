@@ -386,8 +386,16 @@ body {
 .builder {
   display: grid; grid-template-columns: 340px 1fr 340px;
   gap: 12px; min-height: calc(100vh - 200px);
+  align-items: stretch;
 }
-.step-list { display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 260px); overflow: auto; padding: 10px; }
+.step-list {
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+}
+.builder .builder-steps-card { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .step-card {
   border: 1px solid var(--border); border-radius: var(--radius-lg);
   background: var(--surface); padding: 10px 12px;
@@ -457,6 +465,7 @@ body {
 }
 .gantt-row:hover { background: var(--surface-2); }
 .gantt-row.bottleneck { background: linear-gradient(90deg, rgba(225,29,46,0.04), transparent 40%); }
+.gantt-row.critical-path { box-shadow: inset 3px 0 0 rgba(30,64,175,0.85); background: linear-gradient(90deg, rgba(30,64,175,0.06), transparent 35%); }
 .gantt-row .gantt-label {
   display: flex; align-items: center; gap: 8px;
   padding: 0 8px; font-size: 11.5px; color: var(--ink-2); font-weight: 500;

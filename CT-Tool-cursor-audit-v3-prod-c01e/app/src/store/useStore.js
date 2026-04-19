@@ -39,6 +39,8 @@ const DEFAULT_SETTINGS = {
   profileRole: "Process Engineer · Plant 3",
   profileEmail: "",
   profileAvatarColor: "#6D28D9",
+  /** When true, each station ID is treated as one machine — overlapping work at that station is serialized in topo order */
+  serializeStations: false,
 };
 
 function genId(prefix = "s") {
@@ -64,8 +66,9 @@ export const useStore = create((set, get) => ({
   versions: loadVersions(),
   activity: stored?.activity ?? INITIAL_ACTIVITY.slice(),
   page: normalizePage(stored?.page || hashPage() || localStorage.getItem("cta_page") || "dashboard"),
-  heatmap: false,
-  showDeps: true,
+  heatmap: stored?.heatmap ?? false,
+  showDeps: stored?.showDeps !== false,
+  highlightCriticalPath: stored?.highlightCriticalPath !== false,
   multilines: stored?.multilines || [],
   toasts: [],
 
@@ -196,6 +199,7 @@ export const useStore = create((set, get) => ({
   setSelectedId: (id) => set({ selectedId: id }),
   setHeatmap: (on) => set({ heatmap: on }),
   setShowDeps: (on) => set({ showDeps: on }),
+  setHighlightCriticalPath: (on) => set({ highlightCriticalPath: on }),
 
   addStep: (step) => {
     const prev = get()._snapshot();
@@ -458,8 +462,8 @@ export const useStore = create((set, get) => ({
   },
 
   _autosave: () => {
-    const { steps, taktTime, selectedId, baselineSteps, activity, multilines, page } = get();
-    saveProject({ steps, taktTime, selectedId, baselineSteps, activity, multilines, page });
+    const { steps, taktTime, selectedId, baselineSteps, activity, multilines, page, heatmap, showDeps, highlightCriticalPath } = get();
+    saveProject({ steps, taktTime, selectedId, baselineSteps, activity, multilines, page, heatmap, showDeps, highlightCriticalPath });
     get()._syncWorkspaceFingerprint();
   },
 

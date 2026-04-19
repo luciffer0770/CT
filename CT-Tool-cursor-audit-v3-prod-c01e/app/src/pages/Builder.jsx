@@ -31,6 +31,7 @@ export default function Builder({ schedule }) {
   const setPage = useStore(s => s.setPage);
   const askConfirm = useStore(s => s.askConfirm);
   const settings = useStore(s => s.settings);
+  const highlightCriticalPath = useStore(s => s.highlightCriticalPath);
 
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
@@ -202,7 +203,7 @@ export default function Builder({ schedule }) {
 
       <div className="builder">
         {/* LEFT — step list */}
-        <div className="card">
+        <div className="card builder-steps-card">
           <div className="card-head">
             <h3>Steps <span className="mono muted" style={{ marginLeft: 6, fontSize: 10 }}>{steps.length}</span></h3>
             <span className="sub">DRAG · SHIFT-CLICK</span>
@@ -296,7 +297,7 @@ export default function Builder({ schedule }) {
             </div>
           </div>
           <div className="card-body tight">
-            <Gantt steps={schedule.steps} totalCT={schedule.totalCycleTime} takt={taktTime} tickEvery={30} showDeps onStepClick={(s) => setSelectedId(s.id)}/>
+            <Gantt steps={schedule.steps} totalCT={schedule.totalCycleTime} takt={taktTime} tickEvery={30} showDeps highlightCritical={highlightCriticalPath} onStepClick={(s) => setSelectedId(s.id)}/>
           </div>
           <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, fontSize: 11.5, color: "var(--ink-3)" }}>
             <Icon name="clock" size={13}/> Real-time — re-scheduled on every change.
@@ -355,6 +356,8 @@ export default function Builder({ schedule }) {
                     style={{ minHeight: 60, resize: "vertical", fontFamily: "inherit" }}
                     value={sel.notes || ""}
                     onChange={(e) => updateStep(sel.id, { notes: e.target.value })}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
                     placeholder="Engineering notes, constraints, or observations…"
                   />
 

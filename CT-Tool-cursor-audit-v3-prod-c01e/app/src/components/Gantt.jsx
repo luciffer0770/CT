@@ -20,6 +20,7 @@ export default function Gantt({
   showTakt = true,
   showDeps = false,
   heatmap = false,
+  highlightCritical = false,
   height = 36,
   compact = false,
   onStepClick,
@@ -88,7 +89,7 @@ export default function Gantt({
         return (
           <div
             key={s.id}
-            className={`gantt-row ${s.bottleneck ? "bottleneck" : ""}`}
+            className={`gantt-row ${s.bottleneck ? "bottleneck" : ""} ${highlightCritical && s.critical ? "critical-path" : ""}`}
             style={{ height: rowH }}
             onClick={() => onStepClick && onStepClick(s)}
           >

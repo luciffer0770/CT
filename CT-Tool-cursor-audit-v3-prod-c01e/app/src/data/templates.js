@@ -1,8 +1,10 @@
+import { LONG_TRAIL_42_STEPS } from "./long-trail-template.js";
+
 // Pre-built process templates — industrial standards
 export const TEMPLATES = [
   {
-    id: "tmpl-bosch-assembly",
-    name: "Automotive Sub-assembly (Bosch-style)",
+    id: "tmpl-auto-assembly",
+    name: "Automotive Sub-assembly (10-step)",
     description: "10-step robotic assembly line with QC inline and EOL test.",
     sector: "Automotive",
     steps: [
@@ -63,6 +65,14 @@ export const TEMPLATES = [
       { id: "p7", name: "Case Pack",   machineTime: 10, operatorTime: 4, setupTime: 3, transferTime: 0, dependencies: ["p6"],   stationId: "LN-3", isValueAdded: false, variability: 5 },
     ],
     taktTime: 45,
+  },
+  {
+    id: "tmpl-long-trail-42",
+    name: "Assembly trail — 42 steps (demo)",
+    description: "Linear chain across 8 stations — stress-test schedule, Gantt length, and station balance.",
+    sector: "Demo",
+    steps: LONG_TRAIL_42_STEPS,
+    taktTime: 280,
   },
 ];
 

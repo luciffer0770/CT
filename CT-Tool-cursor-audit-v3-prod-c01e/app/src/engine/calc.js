@@ -62,8 +62,13 @@ export function topoOrder(steps) {
   return order;
 }
 
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.serializeStations] When true, single-machine stations (see stationMeta) serialize overlapping work
+ * @param {Record<string, { machines?: number, operators?: number }>} [options.stationMeta] Per-station capacity (machines default 999 = unlimited)
+ */
 // Core schedule computation
-export function computeSchedule(rawSteps, taktTime = 240) {
+export function computeSchedule(rawSteps, taktTime = 240, options = {}) {
   if (!rawSteps) rawSteps = [];
   const steps = rawSteps.map(s => ({
     id: s.id,
@@ -187,8 +192,35 @@ export function computeSchedule(rawSteps, taktTime = 240) {
     }
   });
 
+  // Optional: serialize steps that share one machine at the same station (industrial constraint)
+  const stationMeta = options.stationMeta || {};
+  const serializeStations = !!options.serializeStations && Object.keys(stationMeta).length > 0;
+  if (serializeStations) {
+    const stationUntil = {};
+    ordered.forEach((id) => {
+      const s = byId[id];
+      if (!s) return;
+      const st = s.stationId;
+      if (!st) return;
+      const meta = stationMeta[st];
+      const machines = meta?.machines != null ? Number(meta.machines) : 999;
+      if (machines > 1) return;
+      const depEnd = Math.max(0, ...(s.dependencies || []).map((d) => byId[d]?.endTime || 0));
+      const needStart = Math.max(s.startTime, depEnd);
+      const floor = Math.max(needStart, stationUntil[st] || 0);
+      const delta = floor - s.startTime;
+      s.startTime = floor;
+      s.endTime = floor + s.cycleTime;
+      s.waitTime = (s.waitTime || 0) + delta;
+      stationUntil[st] = Math.max(stationUntil[st] || 0, s.endTime);
+    });
+    Object.keys(groups).forEach((gid) => {
+      groupEnd[gid] = Math.max(...(groups[gid] || []).map((mid) => byId[mid]?.endTime || 0));
+    });
+  }
+
   // totalCycleTime = latest endTime across all steps
-  const totalCycleTime = steps.reduce((m, s) => Math.max(m, s.endTime), 0);
+  let totalCycleTime = steps.reduce((m, s) => Math.max(m, s.endTime), 0);
 
   // Critical path: walk from latest ending step backwards along dep with max endTime
   const criticalSet = new Set();
@@ -219,6 +251,21 @@ export function computeSchedule(rawSteps, taktTime = 240) {
   tails.forEach(walk);
 
   steps.forEach(s => { s.critical = criticalSet.has(s.id); });
+
+  // Critical-path contribution % (time on path / project duration) and sensitivity (marginal 1s machine trim)
+  const critList = steps.filter(s => s.critical);
+  const criticalPathWorkSum = critList.reduce((a, s) => a + s.cycleTime, 0);
+  steps.forEach((s) => {
+    s.criticalPathPct = totalCycleTime > 0 && s.critical ? (s.cycleTime / totalCycleTime) * 100 : 0;
+    if (s.critical && totalCycleTime > 0) {
+      const m = Math.max(0, Number(s.machineTime) || 0);
+      const reducible = Math.min(1, m);
+      const afterCT = Math.max(0, totalCycleTime - reducible);
+      s.criticalSensitivity = ((totalCycleTime - afterCT) / totalCycleTime) * 100;
+    } else {
+      s.criticalSensitivity = 0;
+    }
+  });
 
   // Bottleneck: step (or group) with max contribution to critical path
   let bottleneck = null;
@@ -261,6 +308,7 @@ export function computeSchedule(rawSteps, taktTime = 240) {
     groupStart,
     groupEnd,
     criticalSet,
+    criticalPathWorkSum,
     cycles, // original cycle offenders before fix
   };
 }

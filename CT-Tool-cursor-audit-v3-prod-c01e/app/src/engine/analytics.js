@@ -55,6 +55,18 @@ export function lineBalance(steps) {
   return { load, max, min, avg, balanceScore: balance };
 }
 
+/** Stations where total work time exceeds takt (rough overload indicator) */
+export function stationOverloadVsTakt(steps, taktSec) {
+  const lb = lineBalance(steps);
+  const t = Math.max(1, Number(taktSec) || 1);
+  return Object.entries(lb.load).map(([station, sec]) => ({
+    station,
+    loadSec: sec,
+    overBy: sec - t,
+    overloaded: sec > t,
+  })).sort((a, b) => b.loadSec - a.loadSec);
+}
+
 // Stats on cycle times
 export function cycleStats(steps) {
   const vals = steps.map(s => (Number(s.machineTime) || 0) + (Number(s.operatorTime) || 0) + (Number(s.setupTime) || 0));
@@ -90,23 +102,38 @@ export function variationAnalysis(steps) {
   });
 }
 
-// Auto-suggest optimization
+// Auto-suggest optimization — ranked by estimated ROI (cycle impact vs effort proxy)
 export function suggestOptimization(steps, takt) {
   const schedule = computeSchedule(steps, takt);
   const suggestions = [];
   const bn = schedule.bottleneck;
+  const gap = schedule.totalCycleTime - takt;
   if (bn) {
     const pct = 10;
     const reduced = steps.map(s => s.id === bn.id ? { ...s, machineTime: Math.max(0, s.machineTime * (1 - pct / 100)) } : s);
     const after = computeSchedule(reduced, takt);
     const gain = schedule.totalCycleTime - after.totalCycleTime;
+    const why = bn.critical
+      ? "Largest cycle-time step on the computed critical path — limits total output."
+      : "Longest-duration critical step in the current model.";
+    const roi = gain > 0 ? gain / Math.max(1, (bn.machineTime || 0) * (pct / 100)) : 0;
     suggestions.push({
       step: bn,
       kind: "reduce-machine",
       reduction: pct,
       expectedGain: gain,
-      message: `Reduce ${bn.name} machine time by ${pct}% → total cycle -${gain.toFixed(1)}s`,
+      priority: 1,
+      roi,
+      rootCause: why,
+      message: `[Priority 1] ${bn.name}: ${why} Reducing machine time ${pct}% → about −${gain.toFixed(1)}s cycle (effort proxy ROI ${roi.toFixed(2)}).`,
     });
+    if (gap > 0) {
+      suggestions.push({
+        kind: "takt-gap",
+        priority: 2,
+        message: `Line is ${gap.toFixed(0)}s over takt — focus on "${bn.name}" first, then rebalance stations or reduce non-value-added time.`,
+      });
+    }
   }
   // suggest parallel candidates: any two sibling steps with no mutual dependency
   const byId = {};
@@ -131,7 +158,9 @@ export function suggestOptimization(steps, takt) {
       kind: "parallelize",
       pair: [c.a, c.b],
       expectedGain: c.saves,
-      message: `Run "${c.a.name}" and "${c.b.name}" in parallel → save ~${c.saves}s`,
+      priority: 3,
+      rootCause: "No hard dependency between these steps but both wait on upstream work — parallel may shorten the path.",
+      message: `[Parallel] "${c.a.name}" & "${c.b.name}" — potential ~${Math.round(c.saves)}s if grouped (verify tooling / space).`,
     });
   }
 
@@ -142,11 +171,13 @@ export function suggestOptimization(steps, takt) {
       kind: "smed",
       step: s,
       expectedGain: s.setupTime * 0.5,
-      message: `SMED opportunity on "${s.name}" — setup ${s.setupTime}s is >50% of work; target -${Math.round(s.setupTime * 0.5)}s`,
+      priority: 4,
+      rootCause: "Setup dominates step time — classic SMED / quick-change candidate.",
+      message: `SMED on "${s.name}" — setup ${s.setupTime}s > 50% of step work; target about −${Math.round(s.setupTime * 0.5)}s.`,
     });
   });
 
-  return suggestions;
+  return suggestions.sort((a, b) => (a.priority || 99) - (b.priority || 99));
 }
 
 // Suggest next steps (smart suggestions)

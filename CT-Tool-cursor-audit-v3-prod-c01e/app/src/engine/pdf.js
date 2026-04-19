@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export function exportReportToPDF({ project, schedule, reportId = `R-${Date.now()}`, title = "Cycle Time Report" }) {
+export function exportReportToPDF({ project, schedule, reportId = `R-${Date.now()}`, title = "Cycle Time Report", insights = [] }) {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
 
@@ -38,7 +38,7 @@ export function exportReportToPDF({ project, schedule, reportId = `R-${Date.now(
 
   doc.setFontSize(8);
   doc.setTextColor(120);
-  doc.text(`ID ${reportId}   REV v${(project?.versionCount || 14)}`, pageW - 40, 60, { align: "right" });
+  doc.text(`ID ${reportId}   REV v${project?.versionCount ?? 0}`, pageW - 40, 60, { align: "right" });
 
   // KPI boxes
   const kpi = [
@@ -49,22 +49,37 @@ export function exportReportToPDF({ project, schedule, reportId = `R-${Date.now(
   ];
   const boxW = (pageW - 80) / 4 - 8;
   let kx = 40;
-  const ky = 120;
+  const kyKpi = 118;
   kpi.forEach(k => {
     doc.setDrawColor(210);
-    doc.rect(kx, ky, boxW, 50);
+    doc.rect(kx, kyKpi, boxW, 50);
     doc.setFontSize(7); doc.setTextColor(130);
-    doc.text(k.label, kx + 10, ky + 15);
+    doc.text(k.label, kx + 10, kyKpi + 15);
     doc.setFontSize(16); doc.setTextColor(20);
     doc.setFont("helvetica", "bold");
-    doc.text(String(k.val), kx + 10, ky + 38);
+    doc.text(String(k.val), kx + 10, kyKpi + 38);
     doc.setFont("helvetica", "normal");
     kx += boxW + 10;
   });
 
+  let tableStartY = kyKpi + 60;
+  if (Array.isArray(insights) && insights.length) {
+    doc.setFontSize(8);
+    doc.setTextColor(60);
+    doc.setFont("helvetica", "bold");
+    doc.text("Recommendations", 40, tableStartY);
+    doc.setFont("helvetica", "normal");
+    let iy = tableStartY + 12;
+    insights.slice(0, 5).forEach((line) => {
+      doc.text(`• ${String(line).slice(0, 118)}`, 44, iy);
+      iy += 11;
+    });
+    tableStartY = iy + 8;
+  }
+
   // Steps table
   autoTable(doc, {
-    startY: 190,
+    startY: tableStartY,
     head: [["#", "Step", "Station", "Machine", "Operator", "Setup", "Cycle", "Start", "End", "Wait", "Status"]],
     body: schedule.steps.map((s, i) => [
       i + 1,

@@ -22,8 +22,25 @@ export default function App() {
   const page = useStore(s => s.page);
   const steps = useStore(s => s.steps);
   const taktTime = useStore(s => s.taktTime);
+  const serializeStations = useStore(s => s.settings.serializeStations);
 
-  const schedule = useMemo(() => computeSchedule(steps, taktTime), [steps, taktTime]);
+  const schedule = useMemo(() => {
+    const stationMeta = {};
+    if (serializeStations) {
+      const seen = new Set();
+      steps.forEach((st) => {
+        const sid = st.stationId;
+        if (sid && !seen.has(sid)) {
+          seen.add(sid);
+          stationMeta[sid] = { machines: 1 };
+        }
+      });
+    }
+    return computeSchedule(steps, taktTime, {
+      serializeStations,
+      stationMeta,
+    });
+  }, [steps, taktTime, serializeStations]);
 
   return (
     <>
