@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1440" />
+    <meta name="description" content="Cycle Time Analyzer — industrial-grade desktop web tool for manufacturing engineers: cycle time, bottleneck detection, Gantt/Yamazumi/Pareto, SMED, simulation and reports. Runs fully offline in your browser."/>
+    <meta name="theme-color" content="#0B1020" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Open Graph / social -->
+    <meta property="og:title" content="Cycle Time Analyzer — Industrial Edition" />
+    <meta property="og:description" content="Desktop manufacturing engineering tool: cycle time, bottleneck, Gantt, Yamazumi, Pareto, SMED and simulation — runs fully in the browser." />
+    <meta property="og:type" content="website" />
+
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="favicon.svg" />
+
+    <title>Cycle Time Analyzer — Industrial Edition</title>
+
+    <style>
+      /* First-paint styles so the app never looks unstyled while chunks load */
+      html, body { margin: 0; padding: 0; background: #F4F6FA; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0B1020; }
+      #root:empty::before {
+        content: "";
+        position: fixed; inset: 0;
+        background: #F4F6FA url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'><circle cx='18' cy='18' r='14' fill='none' stroke='%231E40AF' stroke-width='3' stroke-linecap='round' stroke-dasharray='20 80'><animateTransform attributeName='transform' type='rotate' from='0 18 18' to='360 18 18' dur='0.9s' repeatCount='indefinite'/></circle></svg>") center center no-repeat;
+      }
+      .no-js-fallback { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <div style="padding:40px;font-family:system-ui;">
+        <h1 style="font-size:22px;margin:0 0 8px">Cycle Time Analyzer</h1>
+        <p>This tool needs JavaScript enabled to run.</p>
+      </div>
+    </noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

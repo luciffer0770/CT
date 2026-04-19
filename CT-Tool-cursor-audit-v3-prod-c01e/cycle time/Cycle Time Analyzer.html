@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1440"/>
+<title>Cycle Time Analyzer — Industrial Edition</title>
+<link rel="stylesheet" href="styles.css"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body style="font-family: system-ui;">
+<div id="root"></div>
+
+<script type="text/babel" src="components/icons.jsx"></script>
+<script type="text/babel" src="components/data.jsx"></script>
+<script type="text/babel" src="components/charts.jsx"></script>
+<script type="text/babel" src="components/shell.jsx"></script>
+<script type="text/babel" src="components/page-dashboard.jsx"></script>
+<script type="text/babel" src="components/page-builder.jsx"></script>
+<script type="text/babel" src="components/page-gantt.jsx"></script>
+<script type="text/babel" src="components/page-analytics.jsx"></script>
+<script type="text/babel" src="components/page-sim.jsx"></script>
+<script type="text/babel" src="components/page-reports.jsx"></script>
+<script type="text/babel" src="components/page-settings.jsx"></script>
+
+<script type="text/babel">
+function App() {
+  const initPage = localStorage.getItem("cta_page") || "dashboard";
+  const [page, setPage] = React.useState(initPage);
+  const [steps, setSteps] = React.useState(DEFAULT_STEPS);
+  const [takt, setTakt] = React.useState(240);
+  const [selectedId, setSelectedId] = React.useState("s4");
+  const [settings, setSettings] = React.useState({
+    units: "sec", defaultTakt: 240, rounding: "1", refresh: "5s",
+    theme: "light", accent: "#1E40AF", compact: false, grid: true,
+  });
+
+  React.useEffect(() => { localStorage.setItem("cta_page", page); }, [page]);
+
+  const state = React.useMemo(() => computeSchedule(steps, takt), [steps, takt]);
+  const baseline = React.useMemo(() => computeSchedule(DEFAULT_STEPS, 240), []);
+
+  return (
+    <div className="app" data-screen-label={page}>
+      <Sidebar page={page} setPage={setPage}/>
+      <TopBar state={state} setTakt={setTakt}/>
+      <main className="main">
+        {page === "dashboard" && <PageDashboard state={state}/>}
+        {page === "builder"   && <PageBuilder state={state} steps={steps} setSteps={setSteps} selectedId={selectedId} setSelectedId={setSelectedId}/>}
+        {page === "gantt"     && <PageGantt state={state}/>}
+        {page === "analytics" && <PageAnalytics state={state}/>}
+        {page === "sim"       && <PageSimulation state={state} setSteps={setSteps} baseline={baseline}/>}
+        {page === "reports"   && <PageReports state={state}/>}
+        {page === "settings"  && <PageSettings settings={settings} setSettings={setSettings}/>}
+        <div style={{ height: 40 }}/>
+      </main>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <StatusBar state={state}/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

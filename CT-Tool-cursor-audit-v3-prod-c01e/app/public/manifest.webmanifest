@@ -1,0 +1,13 @@
+{
+  "name": "Cycle Time Analyzer — Industrial Edition",
+  "short_name": "CTA",
+  "description": "Desktop manufacturing engineering tool for cycle time, bottleneck detection, Gantt/Yamazumi/Pareto, SMED, simulation and reporting.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#F4F6FA",
+  "theme_color": "#0B1020",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
