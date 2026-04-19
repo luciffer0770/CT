@@ -1,10 +1,25 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Icon from "../components/Icon.jsx";
 import Gantt from "../components/Gantt.jsx";
 import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { computeSchedule } from "../engine/calc.js";
 import { autoLineBalance } from "../engine/analytics.js";
+
+function buildSimStepsFromBase(baseSteps, adj, removedIds) {
+  return baseSteps
+    .filter((s) => !removedIds.has(s.id))
+    .map((s) => {
+      const a = adj[s.id] || { m: 0, o: 0, s: 0 };
+      return {
+        ...s,
+        machineTime: Math.max(0, (s.machineTime || 0) + a.m),
+        operatorTime: Math.max(0, (s.operatorTime || 0) + a.o),
+        setupTime: Math.max(0, (s.setupTime || 0) + a.s),
+        dependencies: (s.dependencies || []).filter((d) => !removedIds.has(d)),
+      };
+    });
+}
 
 export default function Simulation({ schedule }) {
   const steps = useStore(s => s.steps);
@@ -35,25 +50,32 @@ export default function Simulation({ schedule }) {
   // Per-step adjustments: { [id]: { m, o, s } }
   const [adj, setAdj] = useState({});
   const [removedIds, setRemovedIds] = useState(new Set());
+  /** Saved A/B snapshots for side-by-side comparison */
+  const [scenarioA, setScenarioA] = useState(null);
+  const [scenarioB, setScenarioB] = useState(null);
 
   const baselineSchedule = useMemo(() => computeSchedule(baselineSteps, taktTime, schedOpts), [baselineSteps, taktTime, schedOpts]);
 
-  const simSteps = useMemo(() => {
-    return steps
-      .filter(s => !removedIds.has(s.id))
-      .map(s => {
-        const a = adj[s.id] || { m: 0, o: 0, s: 0 };
-        return {
-          ...s,
-          machineTime: Math.max(0, (s.machineTime || 0) + a.m),
-          operatorTime: Math.max(0, (s.operatorTime || 0) + a.o),
-          setupTime: Math.max(0, (s.setupTime || 0) + a.s),
-          dependencies: (s.dependencies || []).filter(d => !removedIds.has(d)),
-        };
-      });
-  }, [steps, adj, removedIds]);
+  const simSteps = useMemo(
+    () => buildSimStepsFromBase(steps, adj, removedIds),
+    [steps, adj, removedIds],
+  );
 
   const simState = useMemo(() => computeSchedule(simSteps, taktTime, schedOpts), [simSteps, taktTime, schedOpts]);
+
+  const scheduleForSnapshot = useCallback(
+    (snap) => {
+      if (!snap) return null;
+      const r = new Set(snap.removedIds || []);
+      const a = snap.adj || {};
+      const ss = buildSimStepsFromBase(steps, a, r);
+      return computeSchedule(ss, taktTime, schedOpts);
+    },
+    [steps, taktTime, schedOpts],
+  );
+
+  const simStateA = useMemo(() => scheduleForSnapshot(scenarioA), [scheduleForSnapshot, scenarioA]);
+  const simStateB = useMemo(() => scheduleForSnapshot(scenarioB), [scheduleForSnapshot, scenarioB]);
 
   const ctDelta = simState.totalCycleTime - baselineSchedule.totalCycleTime;
   const effDelta = simState.efficiency - baselineSchedule.efficiency;
@@ -67,6 +89,8 @@ export default function Simulation({ schedule }) {
         setSteps(simSteps);
         setAdj({});
         setRemovedIds(new Set());
+        setScenarioA(null);
+        setScenarioB(null);
         toast("Simulation applied to line", "success");
       },
     });
@@ -76,7 +100,10 @@ export default function Simulation({ schedule }) {
       title: "Reset simulation?",
       body: "Discard all sliders and removed-step toggles in this view?",
       confirmLabel: "Reset",
-      onConfirm: () => { setAdj({}); setRemovedIds(new Set()); },
+      onConfirm: () => {
+        setAdj({});
+        setRemovedIds(new Set());
+      },
     });
   };
 
@@ -141,6 +168,30 @@ export default function Simulation({ schedule }) {
     setRemovedIds(next);
   };
 
+  const snapshotCurrent = () => ({
+    adj: Object.fromEntries(Object.entries(adj).map(([k, v]) => [k, { ...v }])),
+    removedIds: Array.from(removedIds),
+  });
+
+  const saveScenarioA = () => {
+    setScenarioA(snapshotCurrent());
+    toast("Scenario A saved from current sliders", "success");
+  };
+  const saveScenarioB = () => {
+    setScenarioB(snapshotCurrent());
+    toast("Scenario B saved from current sliders", "success");
+  };
+  const loadScenario = (which) => {
+    const snap = which === "A" ? scenarioA : scenarioB;
+    if (!snap) {
+      toast(`Scenario ${which} is empty — use Save first`, "error");
+      return;
+    }
+    setAdj(snap.adj || {});
+    setRemovedIds(new Set(snap.removedIds || []));
+    toast(`Loaded scenario ${which} into sliders`, "success");
+  };
+
   return (
     <>
       <PageCrumbs line={settings.line} pageTitle="SIMULATION" />
@@ -150,6 +201,10 @@ export default function Simulation({ schedule }) {
           <div className="page-sub">What-if analysis. Adjust machine/operator/setup time per step and see impact on takt, efficiency, bottleneck.</div>
         </div>
         <div className="toolbar">
+          <button className="btn" onClick={saveScenarioA} title="Store current simulation as Scenario A"><Icon name="save" size={13}/> Save → A</button>
+          <button className="btn" onClick={saveScenarioB} title="Store current simulation as Scenario B"><Icon name="save" size={13}/> Save → B</button>
+          <button className="btn xs" onClick={() => loadScenario("A")}>Load A</button>
+          <button className="btn xs" onClick={() => loadScenario("B")}>Load B</button>
           <button className="btn" onClick={reset}><Icon name="reset" size={13}/> Reset</button>
           <button className="btn" onClick={monteCarlo}><Icon name="play" size={13}/> Run 1,000 trials</button>
           <button className="btn" onClick={autoBalance}><Icon name="shuffle" size={13}/> Auto balance</button>
@@ -166,6 +221,8 @@ export default function Simulation({ schedule }) {
                   setSteps(simSteps);
                   setAdj({});
                   setRemovedIds(new Set());
+                  setScenarioA(null);
+                  setScenarioB(null);
                   saveNewVersion("After simulation");
                   toast("Applied and saved version", "success");
                 },
@@ -203,6 +260,60 @@ export default function Simulation({ schedule }) {
           <div style={{ marginTop: 12 }}>
             <Gantt steps={simState.steps} totalCT={simState.totalCycleTime} takt={simState.takt} tickEvery={40} labelWidth={130}/>
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="card-head">
+          <h3>Saved scenarios (A / B)</h3>
+          <span className="sub">Compare stored runs without changing the live sliders</span>
+        </div>
+        <div className="card-body" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {["A", "B"].map((label) => {
+            const st = label === "A" ? simStateA : simStateB;
+            const snap = label === "A" ? scenarioA : scenarioB;
+            return (
+              <div
+                key={label}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: 10,
+                  background: "var(--surface-2)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span className="mono" style={{ fontWeight: 700, letterSpacing: ".12em" }}>
+                    SCENARIO {label}
+                  </span>
+                  {!snap && <span className="tag">EMPTY</span>}
+                </div>
+                {st ? (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 10 }}>
+                      <Metric k="Cycle" v={st.totalCycleTime} u="s" color="var(--ink)"/>
+                      <Metric k="Efficiency" v={st.efficiency} u="%" color="var(--ink)"/>
+                      <Metric k="B/N" v={st.bottleneck?.name?.split(" ")[0] || "—"} u="" color="var(--red)" small/>
+                    </div>
+                    <Gantt
+                      steps={st.steps}
+                      totalCT={st.totalCycleTime}
+                      takt={st.takt}
+                      tickEvery={50}
+                      labelWidth={110}
+                      compact
+                      virtualize
+                      virtualMaxRows={60}
+                    />
+                  </>
+                ) : (
+                  <div className="muted" style={{ fontSize: 12, padding: "8px 0" }}>
+                    Use <b>Save → {label}</b> while your sliders match the case you want to compare.
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

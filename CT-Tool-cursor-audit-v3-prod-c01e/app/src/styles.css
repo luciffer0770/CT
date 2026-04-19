@@ -392,6 +392,7 @@ body {
   display: flex; flex-direction: column; gap: 8px;
   flex: 1;
   min-height: 0;
+  max-height: min(52vh, 480px);
   overflow-y: auto;
   padding: 10px;
 }
@@ -441,6 +442,15 @@ body {
   position: relative;
   width: 100%;
   user-select: none;
+}
+.gantt-virtual .gantt-body-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  border-top: 1px dashed var(--border);
+}
+.gantt-virtual .gantt-body-scroll .gantt-row {
+  contain: layout style;
 }
 .gantt-head {
   display: grid; grid-template-columns: var(--label-w, 140px) 1fr;

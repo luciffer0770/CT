@@ -7,6 +7,8 @@ const dist = join(root, '..', 'dist');
 const indexHtml = join(dist, 'index.html');
 const notFound = join(dist, '404.html');
 const manifestPath = join(dist, 'manifest.webmanifest');
+const swPublic = join(root, '..', 'public', 'sw.js');
+const swDist = join(dist, 'sw.js');
 
 if (!existsSync(indexHtml)) {
   console.error('[postbuild] dist/index.html missing — build may have failed.');
@@ -14,6 +16,11 @@ if (!existsSync(indexHtml)) {
 }
 copyFileSync(indexHtml, notFound);
 console.log('[postbuild] wrote 404.html (SPA fallback for GitHub Pages)');
+
+if (existsSync(swPublic)) {
+  copyFileSync(swPublic, swDist);
+  console.log('[postbuild] copied sw.js (offline cache)');
+}
 
 // GitHub project Pages live under /<repo>/ — PWA manifest must use the same base or "Add to home screen" opens the wrong URL.
 const base = process.env.VITE_BASE || '/';

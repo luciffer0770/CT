@@ -5,7 +5,8 @@ import { HBar } from "../components/Charts.jsx";
 import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { suggestNextSteps, validateSteps, suggestOptimization } from "../engine/analytics.js";
-import { importStepsFromFile, exportStepsToExcel, downloadTemplate } from "../engine/excel-lazy.js";
+import ExcelImportModal from "../components/ExcelImportModal.jsx";
+import { analyzeImportFile, exportStepsToExcel, downloadTemplate } from "../engine/excel-lazy.js";
 
 export default function Builder({ schedule }) {
   const steps = useStore(s => s.steps);
@@ -38,6 +39,7 @@ export default function Builder({ schedule }) {
   const [multiSelect, setMultiSelect] = useState(new Set());
   const fileRef = useRef(null);
   const jsonRef = useRef(null);
+  const [excelImport, setExcelImport] = useState(null);
 
   const sel = schedule.steps.find(s => s.id === selectedId) || schedule.steps[0];
   const stepById = {};
@@ -88,9 +90,8 @@ export default function Builder({ schedule }) {
     const f = e.target.files?.[0];
     if (!f) return;
     try {
-      const imported = await importStepsFromFile(f);
-      replaceSteps(imported);
-      toast(`Imported ${imported.length} steps`, "success");
+      const analyzed = await analyzeImportFile(f);
+      setExcelImport(analyzed);
     } catch (err) {
       console.error(err);
       toast("Import failed: " + err.message, "error");
@@ -122,6 +123,21 @@ export default function Builder({ schedule }) {
 
   return (
     <>
+      <ExcelImportModal
+        open={!!excelImport}
+        data={excelImport}
+        onClose={() => setExcelImport(null)}
+        onImported={(res) => {
+          if (!res.ok) {
+            toast(res.message || "Import blocked", "error");
+            return;
+          }
+          replaceSteps(res.steps);
+          const w = (res.warns || res.issues || []).filter((i) => i.severity === "warn").length;
+          toast(`Imported ${res.steps.length} step(s)${w ? ` · ${w} warning(s)` : ""}`, "success");
+          setExcelImport(null);
+        }}
+      />
       <PageCrumbs line={settings.line} pageTitle="CYCLE BUILDER" />
       <div className="page-head">
         <div>

@@ -17,7 +17,7 @@ const csp = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "connect-src 'self'",
-  "worker-src 'none'",
+  "worker-src 'self'",
 ].join('; ');
 
 export default defineConfig({
@@ -55,7 +55,7 @@ export default defineConfig({
         // a function here.
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
-          if (id.includes('/xlsx/')) return 'xlsx';
+          if (id.includes('/exceljs') || id.includes('exceljs')) return 'excel';
           if (id.includes('/jspdf')) return 'pdf';
           if (id.includes('/html2canvas/')) return 'pdf';
           if (id.includes('/dompurify/')) return 'pdf';

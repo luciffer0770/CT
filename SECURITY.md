@@ -22,7 +22,7 @@ This repository ships a **client-only** React app. Understanding what is and is 
 ## Dependency scanning
 
 - **Dependabot** is configured for `CT-Tool-cursor-audit-v3-prod-c01e/app`.
-- `npm audit` may report issues in **xlsx** (SheetJS) with **no fix** in the community package; the library is loaded only when the user imports a spreadsheet, not on first paint. Consider migrating to a maintained fork or server-side conversion if your threat model requires it.
+- Spreadsheet import/export uses **ExcelJS** (lazy-loaded when the user imports or exports). Run `npm audit` in CI and review updates like any other dependency.
 
 ## GitHub Pages deployment
 
