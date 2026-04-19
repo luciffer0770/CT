@@ -70,6 +70,14 @@ npm run preview
 1. In the GitHub repo: **Settings → Pages → Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
 2. Push to **`main`**: the workflow **Deploy to GitHub Pages** builds `CT-Tool-cursor-audit-v3-prod-c01e/app` with `VITE_BASE=/<repo>/`, writes **`404.html`** for SPA routing, and patches **`manifest.webmanifest`** `start_url` / `scope` for the same base path.
 3. After the first run succeeds, open **`https://<user>.github.io/<repo>/`** (trailing slash is fine).
+4. Confirm the workflow ran: **Actions** tab → **Deploy to GitHub Pages** → latest run on `main` should be green.
+
+### If the site looks old or stuck on the loading spinner
+
+- Wait for the **Deploy** workflow to finish after your push (usually a few minutes).
+- Do a **hard refresh**: Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (macOS).
+- **Unregister the service worker** once: DevTools → **Application** → **Service Workers** → **Unregister**, then reload (older SW versions could cache wrong responses; v1.1+ fixes this).
+- Check **Settings → About** in the app: **Build** should match the short git SHA from the latest successful Action; **Version** should match `package.json` (e.g. 1.1.0).
 
 See **`SECURITY.md`** at the repo root for threat model (static site vs local data).
 
