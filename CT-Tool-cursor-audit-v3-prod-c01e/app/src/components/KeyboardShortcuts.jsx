@@ -11,6 +11,7 @@ export default function KeyboardShortcuts() {
   const setPage = useStore(s => s.setPage);
   const addStep = useStore(s => s.addStep);
   const page = useStore(s => s.page);
+  const toggleSidebarCollapsed = useStore(s => s.toggleSidebarCollapsed);
 
   useEffect(() => {
     let gBuffer = 0;
@@ -28,6 +29,11 @@ export default function KeyboardShortcuts() {
 
       if (editing) return;
 
+      if (e.key === "[" || e.key === "]") {
+        e.preventDefault();
+        toggleSidebarCollapsed();
+        return;
+      }
       if (e.key === "?") { e.preventDefault(); toggleShortcuts(true); return; }
       if (e.key.toLowerCase() === "n" && page === "builder") { e.preventDefault(); addStep(); return; }
 
@@ -49,7 +55,7 @@ export default function KeyboardShortcuts() {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePalette, toggleShortcuts, undo, redo, saveNewVersion, setPage, addStep, page]);
+  }, [togglePalette, toggleShortcuts, undo, redo, saveNewVersion, setPage, addStep, page, toggleSidebarCollapsed]);
 
   return null;
 }

@@ -33,6 +33,8 @@ export default function Builder({ schedule }) {
   const askConfirm = useStore(s => s.askConfirm);
   const settings = useStore(s => s.settings);
   const highlightCriticalPath = useStore(s => s.highlightCriticalPath);
+  const builderStepListHeightPx = useStore(s => s.builderStepListHeightPx);
+  const setBuilderStepListHeightPx = useStore(s => s.setBuilderStepListHeightPx);
 
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
@@ -217,12 +219,31 @@ export default function Builder({ schedule }) {
         </span>
       </div>
 
-      <div className="builder">
+      <div
+        className="builder"
+        style={{
+          "--step-list-max-h": `${builderStepListHeightPx}px`,
+          "--builder-gantt-max-h": `${Math.min(560, Math.max(220, builderStepListHeightPx + 120))}px`,
+        }}
+      >
         {/* LEFT — step list */}
         <div className="card builder-steps-card">
           <div className="card-head">
             <h3>Steps <span className="mono muted" style={{ marginLeft: 6, fontSize: 10 }}>{steps.length}</span></h3>
             <span className="sub">DRAG · SHIFT-CLICK</span>
+          </div>
+          <div className="step-list-height-row">
+            <span className="mono" style={{ whiteSpace: "nowrap" }}>List height</span>
+            <input
+              type="range"
+              min={160}
+              max={520}
+              step={10}
+              value={builderStepListHeightPx}
+              onChange={(e) => setBuilderStepListHeightPx(e.target.value)}
+              aria-label="Step list panel height"
+            />
+            <span className="mono muted" style={{ minWidth: 44, textAlign: "right" }}>{builderStepListHeightPx}px</span>
           </div>
           <div className="step-list no-select" onDragOver={(e) => e.preventDefault()}>
             {schedule.steps.map((s, i) => (
@@ -302,7 +323,7 @@ export default function Builder({ schedule }) {
         </div>
 
         {/* CENTER — Live Gantt */}
-        <div className="card">
+        <div className="card flex-col builder-gantt-card">
           <div className="card-head">
             <h3>Live Gantt</h3>
             <div className="legend">
@@ -313,10 +334,22 @@ export default function Builder({ schedule }) {
             </div>
           </div>
           <div className="card-body tight">
-            <Gantt steps={schedule.steps} totalCT={schedule.totalCycleTime} takt={taktTime} tickEvery={30} showDeps highlightCritical={highlightCriticalPath} onStepClick={(s) => setSelectedId(s.id)}/>
+            <Gantt
+              steps={schedule.steps}
+              totalCT={schedule.totalCycleTime}
+              takt={taktTime}
+              tickEvery={40}
+              labelWidth={150}
+              compact
+              highlightCritical={highlightCriticalPath}
+              virtualize
+              virtualMaxRows={28}
+              fillParent
+              onStepClick={(s) => setSelectedId(s.id)}
+            />
           </div>
           <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, fontSize: 11.5, color: "var(--ink-3)" }}>
-            <Icon name="clock" size={13}/> Real-time — re-scheduled on every change.
+            <Icon name="clock" size={13}/> Real-time schedule · scroll for long models (use Schedule → Deps for arrows).
           </div>
         </div>
 

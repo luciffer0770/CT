@@ -29,6 +29,10 @@ export default function Gantt({
   virtualize = true,
   virtualMaxRows = 80,
   overscan = DEFAULT_OVERSCAN,
+  /** When true, virtual scroll area grows with parent flex instead of a fixed max-height */
+  fillParent = false,
+  /** Cap virtual body as fraction of viewport height (only when not fillParent) */
+  maxViewportFraction = 0.7,
 }) {
   const wrapRef = useRef(null);
   const scrollRef = useRef(null);
@@ -72,11 +76,19 @@ export default function Gantt({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !useVirtual) return;
-    const ro = new ResizeObserver(() => setViewportH(el.clientHeight || 400));
+    const measure = () => {
+      const ch = el.clientHeight || 400;
+      if (fillParent && typeof window !== "undefined") {
+        setViewportH(Math.max(ch, window.innerHeight * 0.25));
+      } else {
+        setViewportH(ch);
+      }
+    };
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    setViewportH(el.clientHeight || 400);
+    measure();
     return () => ro.disconnect();
-  }, [useVirtual, totalRows]);
+  }, [useVirtual, totalRows, fillParent]);
 
   const padTop = useVirtual ? scrollTop : 0;
   const startIdx = useVirtual
@@ -231,7 +243,11 @@ export default function Gantt({
           className="gantt-body-scroll"
           ref={scrollRef}
           onScroll={onScroll}
-          style={{ maxHeight: "min(70vh, 520px)" }}
+          style={
+            fillParent
+              ? { flex: 1, minHeight: 0, maxHeight: "none" }
+              : { maxHeight: `min(${Math.round(maxViewportFraction * 100)}vh, 520px)` }
+          }
         >
           <div style={{ position: "relative", minHeight: bodyH }}>
             {showTakt && totalRows > 0 && (

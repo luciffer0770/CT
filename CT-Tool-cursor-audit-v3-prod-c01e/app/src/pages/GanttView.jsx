@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, useRef, useCallback } from "react";
 import Icon from "../components/Icon.jsx";
 import Gantt from "../components/Gantt.jsx";
 import Swimlane from "../components/Swimlane.jsx";
@@ -21,6 +21,51 @@ export default function GanttView({ schedule }) {
   const setSelectedId = useStore(s => s.setSelectedId);
   const [tickEvery, setTickEvery] = useState(20);
   const [mode, setMode] = useState("gantt"); // gantt | swimlane | flow
+  const [dagZoom, setDagZoom] = useState(1);
+  const dagScrollRef = useRef(null);
+  const dagDrag = useRef({ active: false, sx: 0, sy: 0, sl: 0, st: 0 });
+
+  const onDagWheel = useCallback((e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const el = dagScrollRef.current;
+    if (!el) return;
+    const delta = e.deltaY > 0 ? -0.08 : 0.08;
+    setDagZoom((z) => Math.min(2.5, Math.max(0.35, Math.round((z + delta) * 100) / 100)));
+  }, []);
+
+  const onDagPointerDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    const el = dagScrollRef.current;
+    if (!el) return;
+    dagDrag.current = { active: true, sx: e.clientX, sy: e.clientY, sl: el.scrollLeft, st: el.scrollTop };
+    el.style.cursor = "grabbing";
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const onDagPointerMove = useCallback((e) => {
+    const d = dagDrag.current;
+    if (!d.active) return;
+    const el = dagScrollRef.current;
+    if (!el) return;
+    el.scrollLeft = d.sl - (e.clientX - d.sx);
+    el.scrollTop = d.st - (e.clientY - d.sy);
+  }, []);
+  const endDagDrag = useCallback((e) => {
+    dagDrag.current.active = false;
+    const el = dagScrollRef.current;
+    if (el) {
+      el.style.cursor = "grab";
+      try {
+        if (e?.pointerId != null) el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   const overTakt = schedule.totalCycleTime > taktTime;
 
@@ -102,8 +147,38 @@ export default function GanttView({ schedule }) {
             <h3>Process Flow · DAG</h3>
             <span className="sub">LAYERED BY DEPENDENCY DEPTH</span>
           </div>
-          <div className="card-body tight" style={{ minHeight: 500, overflow: "auto" }}>
-            <ProcessFlow schedule={schedule} onStepClick={jumpToBuilder} height={500}/>
+          <div className="card-body tight" style={{ padding: 0 }}>
+            <div className="dag-zoom-wrap">
+              <div className="dag-zoom-toolbar">
+                <span className="mono">Zoom {(dagZoom * 100).toFixed(0)}%</span>
+                <input
+                  type="range"
+                  min={35}
+                  max={250}
+                  step={5}
+                  value={Math.round(dagZoom * 100)}
+                  onChange={(e) => setDagZoom(Number(e.target.value) / 100)}
+                  aria-label="DAG zoom"
+                />
+                <button type="button" className="btn xs" onClick={() => setDagZoom(1)}>Reset</button>
+                <span className="mono muted" style={{ marginLeft: "auto" }}>Ctrl+wheel · drag pan</span>
+              </div>
+              <div
+                className="dag-zoom-scroll"
+                ref={dagScrollRef}
+                onWheel={onDagWheel}
+                onPointerDown={onDagPointerDown}
+                onPointerMove={onDagPointerMove}
+                onPointerUp={endDagDrag}
+                onPointerCancel={endDagDrag}
+                role="application"
+                aria-label="DAG zoom and pan"
+              >
+                <div style={{ display: "inline-block", padding: 12 }}>
+                  <ProcessFlow schedule={schedule} onStepClick={jumpToBuilder} height={500} zoom={dagZoom}/>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

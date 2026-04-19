@@ -6,9 +6,18 @@ import { useStore } from "../store/useStore.js";
 import { exportReportToPDF } from "../engine/pdf-lazy.js";
 import { exportStepsToExcel } from "../engine/excel-lazy.js";
 import { computeSchedule } from "../engine/calc.js";
-import { paretoSteps, costPerUnit, suggestOptimization } from "../engine/analytics.js";
+import {
+  paretoSteps,
+  costPerUnit,
+  suggestOptimization,
+  deriveOeeFromSchedule,
+  calculateOEE,
+  wasteTally,
+  stationOverloadVsTakt,
+  takt as taktFromDemand,
+} from "../engine/analytics.js";
 
-const REPORT_SECTIONS_KEY = "cta_report_sections_v1";
+const REPORT_SECTIONS_KEY = "cta_report_sections_v2";
 
 const defaultSections = () => ({
   kpi: true,
@@ -18,6 +27,10 @@ const defaultSections = () => ({
   cost: true,
   critical: true,
   notes: true,
+  oee: true,
+  lean: true,
+  overload: true,
+  taktTool: true,
 });
 
 function loadReportSections() {
@@ -107,6 +120,26 @@ export default function Reports({ schedule }) {
     return suggestOptimization(src, displaySchedule.takt).slice(0, 5).map((x) => x.message);
   }, [selected, steps, displaySchedule.takt]);
 
+  const reportSteps = useMemo(
+    () => (selected?.version ? (selected.version.project.steps || []) : steps),
+    [selected, steps],
+  );
+
+  const oeeReport = useMemo(() => {
+    const inp = deriveOeeFromSchedule(displaySchedule);
+    return calculateOEE(inp);
+  }, [displaySchedule]);
+
+  const waste = useMemo(() => wasteTally(reportSteps), [reportSteps]);
+  const overloads = useMemo(() => {
+    const rows = stationOverloadVsTakt(reportSteps, displaySchedule.takt);
+    return rows.filter((o) => o.overloaded);
+  }, [reportSteps, displaySchedule.takt]);
+  const taktCalcReport = useMemo(
+    () => taktFromDemand(settings.availableTimeMin || 420, settings.demandPerShift || 100),
+    [settings.availableTimeMin, settings.demandPerShift],
+  );
+
   const TOTAL_PAGES = 3;
 
   const onExportPDF = () => {
@@ -123,6 +156,15 @@ export default function Reports({ schedule }) {
       reportId: selected?.id || `R-${Date.now()}`,
       title: `Cycle Time Report — ${settings.line} · ${settings.shift}`,
       insights,
+      sections,
+      oee: oeeReport,
+      waste,
+      overloads,
+      taktCalcSec: taktCalcReport,
+      laborRate: settings.laborRate,
+      machineRate: settings.machineRate,
+      availableTimeMin: settings.availableTimeMin,
+      demandPerShift: settings.demandPerShift,
     });
   };
 
@@ -157,8 +199,17 @@ export default function Reports({ schedule }) {
         <div className="card-head"><h3>Report contents</h3><span className="sub">PREVIEW + PDF</span></div>
         <div className="card-body" style={{ display: "flex", flexWrap: "wrap", gap: "10px 18px", fontSize: 11 }}>
           {[
-            ["kpi", "KPI strip"], ["steps", "Step table"], ["gantt", "Gantt"], ["pareto", "Pareto"],
-            ["cost", "Cost / throughput"], ["critical", "Critical path"], ["notes", "Step notes"],
+            ["kpi", "KPI strip"],
+            ["steps", "Step table"],
+            ["gantt", "Gantt"],
+            ["pareto", "Pareto"],
+            ["cost", "Cost / throughput"],
+            ["critical", "Critical path"],
+            ["notes", "Step notes"],
+            ["oee", "OEE (model proxy)"],
+            ["lean", "Lean waste tally"],
+            ["overload", "Station vs takt"],
+            ["taktTool", "Takt calculator"],
           ].map(([k, label]) => (
             <label key={k} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}>
               <input type="checkbox" checked={!!sections[k]} onChange={() => toggleSection(k)} />
@@ -226,6 +277,10 @@ export default function Reports({ schedule }) {
                     { k: "TAKT", v: displaySchedule.takt + "s", c: "#0B1020" },
                     { k: "EFFICIENCY", v: displaySchedule.efficiency + "%", c: "var(--green)" },
                     { k: "BOTTLENECK", v: displaySchedule.bottleneck?.name?.split(" ")[0] || "—", c: "var(--red)", small: true },
+                    { k: "TOTAL WAIT", v: `${displaySchedule.totalWait ?? 0}s`, c: "var(--ink-3)", small: true },
+                    { k: "VA / NVA", v: `${displaySchedule.vaPct}% / ${displaySchedule.nvaPct}%`, c: "#0B1020", small: true },
+                    { k: "STEPS", v: String(displaySchedule.steps.length), c: "var(--ink-3)", small: true },
+                    { k: "CP WORK", v: `${displaySchedule.criticalPathWorkSum ?? "—"}s`, c: "var(--blue)", small: true },
                   ].map(m => (
                     <div key={m.k} style={{ border: "1px solid #E2E6EF", padding: "10px 12px" }}>
                       <div className="mono muted" style={{ fontSize: 9, letterSpacing: ".12em" }}>{m.k}</div>
@@ -332,7 +387,64 @@ export default function Reports({ schedule }) {
                       </div>
                     </>
                   )}
-                  {!sections.cost && !sections.critical && !sections.notes && <div className="muted" style={{ marginTop: 18 }}>Page 3 sections hidden — enable cost, critical path, or notes.</div>}
+                  {sections.oee && (
+                    <>
+                      <h3 style={headStyle}>OEE (model proxy)</h3>
+                      <p className="muted" style={{ fontSize: 10, margin: "0 0 8px", lineHeight: 1.4 }}>
+                        Derived from schedule wait, VA efficiency, and VA share — not machine telemetry.
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                        <ReportTile k="Availability %" v={oeeReport.availability} />
+                        <ReportTile k="Performance %" v={oeeReport.performance} />
+                        <ReportTile k="Quality %" v={oeeReport.quality} />
+                        <ReportTile k="OEE %" v={oeeReport.oee} />
+                      </div>
+                    </>
+                  )}
+                  {sections.lean && (
+                    <>
+                      <h3 style={headStyle}>Lean waste (tagged steps)</h3>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, fontSize: 12 }}>
+                        <ReportTile k="Muda" v={waste.muda} />
+                        <ReportTile k="Mura" v={waste.mura} />
+                        <ReportTile k="Muri" v={waste.muri} />
+                      </div>
+                    </>
+                  )}
+                  {sections.overload && (
+                    <>
+                      <h3 style={headStyle}>Station load vs takt</h3>
+                      {overloads.length === 0 ? (
+                        <div className="muted" style={{ fontSize: 12 }}>No station over takt (by summed step work).</div>
+                      ) : (
+                        <table className="tbl">
+                          <thead><tr><th>Station</th><th style={{ textAlign: "right" }}>Load</th><th style={{ textAlign: "right" }}>Takt</th><th style={{ textAlign: "right" }}>Over</th></tr></thead>
+                          <tbody>
+                            {overloads.map((o) => (
+                              <tr key={o.station}>
+                                <td>{o.station}</td>
+                                <td className="num" style={{ textAlign: "right" }}>{o.loadSec}s</td>
+                                <td className="num" style={{ textAlign: "right" }}>{displaySchedule.takt}s</td>
+                                <td className="num" style={{ textAlign: "right", color: "var(--red)" }}>+{o.overBy}s</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </>
+                  )}
+                  {sections.taktTool && (
+                    <>
+                      <h3 style={headStyle}>Takt calculator (settings)</h3>
+                      <div style={{ fontSize: 12, color: "#0B1020" }}>
+                        Available {settings.availableTimeMin ?? 420} min ÷ demand {settings.demandPerShift ?? 100} u/shift →{" "}
+                        <b>{taktCalcReport}s</b> takt (compare to line takt {displaySchedule.takt}s).
+                      </div>
+                    </>
+                  )}
+                  {!sections.cost && !sections.critical && !sections.notes && !sections.oee && !sections.lean && !sections.overload && !sections.taktTool && (
+                    <div className="muted" style={{ marginTop: 18 }}>Page 3 sections hidden — enable items in Report contents.</div>
+                  )}
                 </>
               )}
 

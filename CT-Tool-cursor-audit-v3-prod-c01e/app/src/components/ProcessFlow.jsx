@@ -2,7 +2,7 @@
 // Simple layered DAG layout:
 // - rank by longest-path depth from roots
 // - position by rank (x) and order within rank (y)
-export default function ProcessFlow({ schedule, onStepClick, height = 380 }) {
+export default function ProcessFlow({ schedule, onStepClick, height = 380, zoom = 1 }) {
   const steps = schedule.steps;
   if (!steps.length) return <div className="muted" style={{ padding: 20, textAlign: "center" }}>No steps</div>;
   const byId = {};
@@ -32,6 +32,7 @@ export default function ProcessFlow({ schedule, onStepClick, height = 380 }) {
   const nodeW = 130, nodeH = 44;
   const gapX = 70, gapY = 18;
   const maxPerRank = Math.max(...Object.values(ranks).map(arr => arr.length));
+  const z = Math.max(0.35, Math.min(2.5, Number(zoom) || 1));
   const canvasW = (maxRank + 1) * (nodeW + gapX) + gapX;
   const canvasH = Math.max(height, maxPerRank * (nodeH + gapY) + gapY * 2);
 
@@ -58,7 +59,13 @@ export default function ProcessFlow({ schedule, onStepClick, height = 380 }) {
   });
 
   return (
-    <svg width="100%" height={canvasH} viewBox={`0 0 ${canvasW} ${canvasH}`} preserveAspectRatio="xMidYMid meet">
+    <svg
+      width={Math.round(canvasW * z)}
+      height={Math.round(canvasH * z)}
+      viewBox={`0 0 ${canvasW} ${canvasH}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: "block" }}
+    >
       {edges.map(e => {
         const x1 = e.from.x + nodeW, y1 = e.from.y + nodeH / 2;
         const x2 = e.to.x, y2 = e.to.y + nodeH / 2;

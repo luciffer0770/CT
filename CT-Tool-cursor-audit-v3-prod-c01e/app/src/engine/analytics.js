@@ -87,6 +87,30 @@ export function calculateOEE({ availability = 90, performance = 92, quality = 99
   };
 }
 
+/**
+ * Derive proxy OEE inputs from a computed schedule (no external MES data).
+ * - Availability: penalises queue/wait vs cycle (flow / utilisation proxy).
+ * - Performance: line VA efficiency (value-added seconds vs total cycle time).
+ * - Quality: VA share of effective work (machine + operator + setup).
+ */
+export function deriveOeeFromSchedule(schedule) {
+  if (!schedule || !schedule.totalCycleTime) {
+    return { availability: 100, performance: 0, quality: 0, note: "No schedule" };
+  }
+  const ct = Math.max(1, schedule.totalCycleTime);
+  const wait = Math.max(0, schedule.totalWait || 0);
+  const waitRatio = Math.min(1.2, wait / ct);
+  const availability = Math.round(Math.max(55, Math.min(100, 100 * (1 - 0.72 * waitRatio))));
+  const performance = Math.min(100, Math.max(0, Math.round(schedule.efficiency || 0)));
+  const quality = Math.min(100, Math.max(0, Math.round(schedule.vaPct || 0)));
+  return {
+    availability,
+    performance,
+    quality,
+    note: "Proxy from wait, VA efficiency, and VA share of work (not shop-floor OEE telemetry).",
+  };
+}
+
 // Variation per step
 export function variationAnalysis(steps) {
   return steps.map(s => {

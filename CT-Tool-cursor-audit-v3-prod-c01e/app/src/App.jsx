@@ -23,6 +23,7 @@ export default function App() {
   const steps = useStore(s => s.steps);
   const taktTime = useStore(s => s.taktTime);
   const serializeStations = useStore(s => s.settings.serializeStations);
+  const sidebarCollapsed = useStore(s => s.sidebarCollapsed);
 
   const schedule = useMemo(() => {
     const stationMeta = {};
@@ -47,7 +48,7 @@ export default function App() {
       <ConfirmDialog/>
       <BeforeUnloadHint/>
       <ErrorBoundary>
-        <div className="app" data-screen-label={page}>
+        <div className={`app${sidebarCollapsed ? " sidebar-collapsed" : ""}`} data-screen-label={page}>
           <Sidebar/>
           <TopBar schedule={schedule}/>
           <main className="main">

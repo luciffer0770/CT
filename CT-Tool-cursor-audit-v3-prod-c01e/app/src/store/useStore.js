@@ -54,6 +54,11 @@ const storedSettings = loadSettings();
 
 const initialSteps = stored?.steps?.length ? stored.steps : deepClone(DEFAULT_STEPS);
 const initialTakt = stored?.taktTime ?? DEFAULT_TAKT;
+const initialSidebarCollapsed = !!stored?.sidebarCollapsed;
+const initialBuilderStepListHeightPx = Math.min(
+  520,
+  Math.max(180, Number(stored?.builderStepListHeightPx) || 300),
+);
 
 const MAX_HISTORY = 50;
 
@@ -69,6 +74,8 @@ export const useStore = create((set, get) => ({
   heatmap: stored?.heatmap ?? false,
   showDeps: stored?.showDeps !== false,
   highlightCriticalPath: stored?.highlightCriticalPath !== false,
+  sidebarCollapsed: initialSidebarCollapsed,
+  builderStepListHeightPx: initialBuilderStepListHeightPx,
   multilines: stored?.multilines || [],
   toasts: [],
 
@@ -97,6 +104,20 @@ export const useStore = create((set, get) => ({
 
   togglePalette: (force) => set(state => ({ palette: typeof force === "boolean" ? force : !state.palette })),
   toggleShortcuts: (force) => set(state => ({ shortcuts: typeof force === "boolean" ? force : !state.shortcuts })),
+
+  setSidebarCollapsed: (collapsed) => {
+    set({ sidebarCollapsed: !!collapsed });
+    get()._autosave();
+  },
+  toggleSidebarCollapsed: () => {
+    set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }));
+    get()._autosave();
+  },
+  setBuilderStepListHeightPx: (px) => {
+    const n = Math.min(560, Math.max(160, Math.round(Number(px) || 300)));
+    set({ builderStepListHeightPx: n });
+    get()._autosave();
+  },
 
   askConfirm: (opts) => set({
     confirmDialog: {
@@ -462,8 +483,14 @@ export const useStore = create((set, get) => ({
   },
 
   _autosave: () => {
-    const { steps, taktTime, selectedId, baselineSteps, activity, multilines, page, heatmap, showDeps, highlightCriticalPath } = get();
-    saveProject({ steps, taktTime, selectedId, baselineSteps, activity, multilines, page, heatmap, showDeps, highlightCriticalPath });
+    const {
+      steps, taktTime, selectedId, baselineSteps, activity, multilines, page,
+      heatmap, showDeps, highlightCriticalPath, sidebarCollapsed, builderStepListHeightPx,
+    } = get();
+    saveProject({
+      steps, taktTime, selectedId, baselineSteps, activity, multilines, page,
+      heatmap, showDeps, highlightCriticalPath, sidebarCollapsed, builderStepListHeightPx,
+    });
     get()._syncWorkspaceFingerprint();
   },
 

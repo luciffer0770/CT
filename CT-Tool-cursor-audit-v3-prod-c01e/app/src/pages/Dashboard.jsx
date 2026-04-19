@@ -6,7 +6,7 @@ import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { exportKPIsToPDF } from "../engine/pdf-lazy.js";
 import { exportStepsToExcel } from "../engine/excel-lazy.js";
-import { calculateOEE } from "../engine/analytics.js";
+import { calculateOEE, deriveOeeFromSchedule } from "../engine/analytics.js";
 
 export default function Dashboard({ schedule }) {
   const activity = useStore(s => s.activity);
@@ -53,7 +53,15 @@ export default function Dashboard({ schedule }) {
     };
   }, [bottleneck, totalCycleTime]);
 
-  const oee = calculateOEE({ availability: 92, performance: Math.min(99, efficiency || 80), quality: 98.5 });
+  const oeeInputs = useMemo(() => deriveOeeFromSchedule(schedule), [schedule]);
+  const oee = useMemo(
+    () => calculateOEE({
+      availability: oeeInputs.availability,
+      performance: oeeInputs.performance,
+      quality: oeeInputs.quality,
+    }),
+    [oeeInputs],
+  );
 
   return (
     <>
@@ -112,13 +120,19 @@ export default function Dashboard({ schedule }) {
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-head">
           <h3>Overall Equipment Effectiveness (OEE)</h3>
-          <span className="tag blue">LIVE</span>
+          <span className="tag blue">FROM MODEL</span>
         </div>
-        <div className="card-body" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 20 }}>
-          <OEEDial label="Availability" value={oee.availability} color="#1E40AF"/>
-          <OEEDial label="Performance" value={oee.performance} color="#06B6D4"/>
-          <OEEDial label="Quality" value={oee.quality} color="#22C55E"/>
-          <OEEDial label="OEE" value={oee.oee} color="#6D28D9" big/>
+        <div className="card-body" style={{ paddingTop: 0 }}>
+          <p className="muted" style={{ fontSize: 11, margin: "0 0 14px", lineHeight: 1.45 }}>
+            Proxy OEE from this line model: <b>Availability</b> from wait vs cycle, <b>Performance</b> from VA efficiency (VA÷CT),
+            <b>Quality</b> from VA share of work (VA÷effective work). Not a substitute for downtime and scrap telemetry.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+            <OEEDial label="Availability" value={oee.availability} color="#1E40AF"/>
+            <OEEDial label="Performance" value={oee.performance} color="#06B6D4"/>
+            <OEEDial label="Quality" value={oee.quality} color="#22C55E"/>
+            <OEEDial label="OEE" value={oee.oee} color="#6D28D9" big/>
+          </div>
         </div>
       </div>
 

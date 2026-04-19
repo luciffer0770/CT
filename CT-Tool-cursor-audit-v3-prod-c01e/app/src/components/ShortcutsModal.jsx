@@ -15,6 +15,7 @@ const SHORTCUTS = [
   ["G then R", "Reports"],
   ["G then T", "Industrial Tools"],
   ["G then ,", "Settings"],
+  ["[ or ]", "Collapse / expand sidebar"],
   ["N (on Builder)", "Add step"],
   ["Shift + Click (Builder)", "Multi-select step for bulk / parallelise"],
   ["Drag step card", "Reorder"],

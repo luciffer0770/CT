@@ -6,6 +6,8 @@ export function Sidebar() {
   const page = useStore(s => s.page);
   const setPage = useStore(s => s.setPage);
   const settings = useStore(s => s.settings);
+  const collapsed = useStore(s => s.sidebarCollapsed);
+  const toggleSidebarCollapsed = useStore(s => s.toggleSidebarCollapsed);
   const items = [
     { id: "dashboard", label: "Dashboard",    icon: "dashboard" },
     { id: "builder",   label: "Cycle Builder", icon: "build"    },
@@ -19,31 +21,51 @@ export function Sidebar() {
   return (
     <>
       <div className="brand">
-        <div>
+        <div className={collapsed ? "brand-text brand-text-collapsed" : "brand-text"}>
           <div className="brand-name">Cycle Time Analyzer</div>
           <div className="brand-sub">Industrial · v4.12</div>
         </div>
+        <button
+          type="button"
+          className="icon-btn brand-collapse-btn"
+          onClick={() => toggleSidebarCollapsed()}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <Icon name={collapsed ? "panel-right" : "panel-left"} size={16}/>
+        </button>
       </div>
-      <aside className="sidebar">
+      <aside className={`sidebar${collapsed ? " collapsed" : ""}`} aria-label="Main navigation">
         <div className="nav-group-label">Workspace</div>
         {items.slice(0, 7).map(it => (
-          <div key={it.id} className={`nav-item ${page === it.id ? "active" : ""}`} onClick={() => setPage(it.id)}>
+          <div
+            key={it.id}
+            className={`nav-item ${page === it.id ? "active" : ""}`}
+            onClick={() => setPage(it.id)}
+            title={collapsed ? it.label : undefined}
+          >
             <span className="nav-icon"><Icon name={it.icon} size={15}/></span>
-            <span>{it.label}</span>
+            <span className="nav-label">{it.label}</span>
           </div>
         ))}
         <div className="nav-group-label">System</div>
         {items.slice(7).map(it => (
-          <div key={it.id} className={`nav-item ${page === it.id ? "active" : ""}`} onClick={() => setPage(it.id)}>
+          <div
+            key={it.id}
+            className={`nav-item ${page === it.id ? "active" : ""}`}
+            onClick={() => setPage(it.id)}
+            title={collapsed ? it.label : undefined}
+          >
             <span className="nav-icon"><Icon name={it.icon} size={15}/></span>
-            <span>{it.label}</span>
+            <span className="nav-label">{it.label}</span>
           </div>
         ))}
 
         <div
           className="sidebar-footer"
           onClick={() => setPage("settings")}
-          title="Open profile settings"
+          title={collapsed ? "Settings" : "Open profile settings"}
           style={{ cursor: "pointer" }}
         >
           <div
@@ -54,7 +76,7 @@ export function Sidebar() {
           >
             {(settings.profileInitials || "MB").slice(0, 2).toUpperCase()}
           </div>
-          <div>
+          <div className="sidebar-footer-text">
             <div className="who">{settings.profileName || "M. Becker"}</div>
             <div className="role">{settings.profileRole || "Process Engineer"}</div>
           </div>
@@ -79,6 +101,8 @@ export function TopBar({ schedule }) {
   const setPage = useStore(s => s.setPage);
   const steps = useStore(s => s.steps);
   const setSelectedId = useStore(s => s.setSelectedId);
+  const sidebarCollapsed = useStore(s => s.sidebarCollapsed);
+  const toggleSidebarCollapsed = useStore(s => s.toggleSidebarCollapsed);
 
   const { totalCycleTime, efficiency, bottleneck } = schedule;
   const overTakt = totalCycleTime > taktTime;
@@ -130,6 +154,15 @@ export function TopBar({ schedule }) {
         </div>
       </div>
       <div className="topbar-right" style={{ position: "relative" }}>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => toggleSidebarCollapsed()}
+          title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+          aria-label={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+        >
+          <Icon name={sidebarCollapsed ? "panel-right" : "panel-left"} size={16}/>
+        </button>
         <div className="search" onClick={() => togglePalette(true)} style={{ cursor: "pointer" }} title="Open command palette (Cmd/Ctrl+K)">
           <Icon name="search" size={14} style={{ color: "var(--ink-4)" }}/>
           <input

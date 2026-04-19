@@ -1,7 +1,38 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { paretoSteps, costPerUnit } from "./analytics.js";
 
-export function exportReportToPDF({ project, schedule, reportId = `R-${Date.now()}`, title = "Cycle Time Report", insights = [] }) {
+export function exportReportToPDF({
+  project,
+  schedule,
+  reportId = `R-${Date.now()}`,
+  title = "Cycle Time Report",
+  insights = [],
+  sections = {},
+  oee = null,
+  waste = null,
+  overloads = null,
+  taktCalcSec = null,
+  laborRate,
+  machineRate,
+  availableTimeMin,
+  demandPerShift,
+}) {
+  const sec = {
+    kpi: true,
+    steps: true,
+    gantt: true,
+    pareto: true,
+    cost: true,
+    critical: true,
+    notes: true,
+    oee: true,
+    lean: true,
+    overload: true,
+    taktTool: true,
+    ...sections,
+  };
+
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
 
@@ -40,29 +71,40 @@ export function exportReportToPDF({ project, schedule, reportId = `R-${Date.now(
   doc.setTextColor(120);
   doc.text(`ID ${reportId}   REV v${project?.versionCount ?? 0}`, pageW - 40, 60, { align: "right" });
 
-  // KPI boxes
-  const kpi = [
-    { label: "CYCLE TIME", val: `${schedule.totalCycleTime}s` },
-    { label: "TAKT", val: `${schedule.takt}s` },
-    { label: "EFFICIENCY", val: `${schedule.efficiency}%` },
-    { label: "BOTTLENECK", val: schedule.bottleneck?.name || "—" },
-  ];
-  const boxW = (pageW - 80) / 4 - 8;
-  let kx = 40;
-  const kyKpi = 118;
-  kpi.forEach(k => {
-    doc.setDrawColor(210);
-    doc.rect(kx, kyKpi, boxW, 50);
-    doc.setFontSize(7); doc.setTextColor(130);
-    doc.text(k.label, kx + 10, kyKpi + 15);
-    doc.setFontSize(16); doc.setTextColor(20);
-    doc.setFont("helvetica", "bold");
-    doc.text(String(k.val), kx + 10, kyKpi + 38);
-    doc.setFont("helvetica", "normal");
-    kx += boxW + 10;
-  });
+  let tableStartY = 118;
+  if (!sec.kpi) tableStartY = 110;
+  if (sec.kpi) {
+    const kpi = [
+      { label: "CYCLE TIME", val: `${schedule.totalCycleTime}s` },
+      { label: "TAKT", val: `${schedule.takt}s` },
+      { label: "EFFICIENCY", val: `${schedule.efficiency}%` },
+      { label: "BOTTLENECK", val: (schedule.bottleneck?.name || "—").slice(0, 28) },
+      { label: "TOTAL WAIT", val: `${schedule.totalWait ?? 0}s` },
+      { label: "VA / NVA", val: `${schedule.vaPct}% / ${schedule.nvaPct}%` },
+      { label: "STEPS", val: `${schedule.steps.length}` },
+      { label: "CP WORK", val: `${schedule.criticalPathWorkSum ?? "—"}s` },
+    ];
+    const cols = 4;
+    const boxW = (pageW - 80) / cols - 8;
+    const kyKpi = 118;
+    kpi.forEach((k, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const kx = 40 + col * (boxW + 10);
+      const ky = kyKpi + row * 56;
+      doc.setDrawColor(210);
+      doc.rect(kx, ky, boxW, 48);
+      doc.setFontSize(7); doc.setTextColor(130);
+      doc.setFont("helvetica", "normal");
+      doc.text(k.label, kx + 8, ky + 12);
+      doc.setFontSize(k.val.length > 14 ? 12 : 15); doc.setTextColor(20);
+      doc.setFont("helvetica", "bold");
+      doc.text(String(k.val), kx + 8, ky + 34);
+      doc.setFont("helvetica", "normal");
+    });
+    tableStartY = kyKpi + Math.ceil(kpi.length / cols) * 56 + 12;
+  }
 
-  let tableStartY = kyKpi + 60;
   if (Array.isArray(insights) && insights.length) {
     doc.setFontSize(8);
     doc.setTextColor(60);
@@ -77,47 +119,206 @@ export function exportReportToPDF({ project, schedule, reportId = `R-${Date.now(
     tableStartY = iy + 8;
   }
 
-  // Steps table
-  autoTable(doc, {
-    startY: tableStartY,
-    head: [["#", "Step", "Station", "Machine", "Operator", "Setup", "Cycle", "Start", "End", "Wait", "Status"]],
-    body: schedule.steps.map((s, i) => [
-      i + 1,
-      s.name,
-      s.stationId || "—",
-      `${s.machineTime}s`,
-      `${s.operatorTime}s`,
-      `${s.setupTime}s`,
-      `${s.cycleTime}s`,
-      `${s.startTime}s`,
-      `${s.endTime}s`,
-      `${s.waitTime}s`,
-      s.bottleneck ? "BOTTLENECK" : s.critical ? "CRITICAL" : "OPTIMAL",
-    ]),
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: [30, 64, 175], textColor: 255 },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
-    didDrawCell: (data) => {
-      if (data.section === "body" && data.column.index === 10) {
-        const v = data.cell.raw;
-        if (v === "BOTTLENECK") {
-          doc.setFillColor(253, 236, 238);
-          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, "F");
-          doc.setTextColor(225, 29, 46);
-          doc.setFont("helvetica", "bold");
-          doc.text(v, data.cell.x + 4, data.cell.y + data.cell.height - 5);
-          doc.setTextColor(20);
-          doc.setFont("helvetica", "normal");
+  if (sec.steps) {
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [["#", "Step", "Station", "Machine", "Operator", "Setup", "Cycle", "Start", "End", "Wait", "Status"]],
+      body: schedule.steps.map((s, i) => [
+        i + 1,
+        s.name,
+        s.stationId || "—",
+        `${s.machineTime}s`,
+        `${s.operatorTime}s`,
+        `${s.setupTime}s`,
+        `${s.cycleTime}s`,
+        `${s.startTime}s`,
+        `${s.endTime}s`,
+        `${s.waitTime}s`,
+        s.bottleneck ? "BOTTLENECK" : s.critical ? "CRITICAL" : "OPTIMAL",
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      didDrawCell: (data) => {
+        if (data.section === "body" && data.column.index === 10) {
+          const v = data.cell.raw;
+          if (v === "BOTTLENECK") {
+            doc.setFillColor(253, 236, 238);
+            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, "F");
+            doc.setTextColor(225, 29, 46);
+            doc.setFont("helvetica", "bold");
+            doc.text(v, data.cell.x + 4, data.cell.y + data.cell.height - 5);
+            doc.setTextColor(20);
+            doc.setFont("helvetica", "normal");
+          }
         }
-      }
-    },
-  });
+      },
+    });
+  }
 
-  // Page 2 — Gantt snapshot
   doc.addPage();
-  doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-  doc.text("Gantt Snapshot", 40, 50);
-  drawGantt(doc, schedule, 40, 70, pageW - 80, 400);
+  let y2 = 50;
+  if (sec.gantt) {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.text("Gantt Snapshot", 40, y2);
+    drawGantt(doc, schedule, 40, y2 + 20, pageW - 80, 320);
+    y2 += 360;
+  } else {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(120);
+    doc.text("Gantt section omitted (disabled in report contents).", 40, y2);
+    y2 += 20;
+  }
+
+  if (sec.pareto) {
+    const pareto = paretoSteps(schedule.steps);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.setTextColor(20);
+    doc.text("Pareto (80/20)", 40, y2);
+    autoTable(doc, {
+      startY: y2 + 8,
+      head: [["#", "Step", "Cycle", "Cumulative %", "Zone"]],
+      body: pareto.map((d, i) => [
+        i + 1,
+        String(d.name).slice(0, 36),
+        `${d.value}s`,
+        `${d.cumPct.toFixed(1)}%`,
+        d.cumPct <= 80 ? "VITAL FEW" : "USEFUL MANY",
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+    });
+    y2 = (doc.lastAutoTable?.finalY ?? y2 + 100) + 16;
+  }
+
+  doc.addPage();
+  let y3 = 50;
+  const pageH = doc.internal.pageSize.getHeight();
+  const ensureSpace = (need) => {
+    if (y3 + need > pageH - 40) {
+      doc.addPage();
+      y3 = 50;
+    }
+  };
+
+  if (sec.cost) {
+    ensureSpace(80);
+    const cost = costPerUnit(schedule.steps, { laborRate: laborRate ?? 35, machineRate: machineRate ?? 80 });
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.setTextColor(20);
+    doc.text("Cost & throughput", 40, y3);
+    y3 += 14;
+    autoTable(doc, {
+      startY: y3,
+      head: [["Item", "Value"]],
+      body: [
+        ["Labour / unit", `$${cost.labor.toFixed(3)}`],
+        ["Machine / unit", `$${cost.machine.toFixed(3)}`],
+        ["Total / unit", `$${cost.total.toFixed(2)}`],
+        ["Units / hr @ takt", `${Math.floor(3600 / Math.max(1, schedule.takt))}`],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+    });
+    y3 = (doc.lastAutoTable?.finalY ?? y3) + 20;
+  }
+
+  if (sec.critical) {
+    ensureSpace(60);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Critical path", 40, y3);
+    y3 += 14;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(40);
+    const chain = schedule.steps.filter((s) => s.critical).map((s) => s.name).join(" → ") || "—";
+    const lines = doc.splitTextToSize(chain, pageW - 80);
+    doc.text(lines, 40, y3);
+    y3 += lines.length * 11 + 8;
+    doc.setTextColor(100);
+    doc.text(`Path work sum: ${schedule.criticalPathWorkSum ?? "—"}s · CT: ${schedule.totalCycleTime}s`, 40, y3);
+    y3 += 18;
+  }
+
+  if (sec.notes) {
+    ensureSpace(40);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.setTextColor(20);
+    doc.text("Notes", 40, y3);
+    y3 += 14;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    const noted = schedule.steps.filter((s) => s.notes);
+    if (!noted.length) {
+      doc.setTextColor(120);
+      doc.text("— no notes —", 40, y3);
+      y3 += 16;
+    } else {
+      noted.slice(0, 12).forEach((s) => {
+        ensureSpace(24);
+        doc.setTextColor(40);
+        const t = doc.splitTextToSize(`${s.name}: ${s.notes}`, pageW - 80);
+        doc.text(t, 40, y3);
+        y3 += t.length * 11 + 4;
+      });
+    }
+  }
+
+  if (sec.oee && oee) {
+    ensureSpace(50);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.setTextColor(20);
+    doc.text("OEE (model proxy)", 40, y3);
+    y3 += 12;
+    autoTable(doc, {
+      startY: y3,
+      head: [["A", "P", "Q", "OEE"]],
+      body: [[`${oee.availability}%`, `${oee.performance}%`, `${oee.quality}%`, `${oee.oee}%`]],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+    });
+    y3 = (doc.lastAutoTable?.finalY ?? y3) + 16;
+  }
+
+  if (sec.lean && waste) {
+    ensureSpace(40);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Lean waste tags", 40, y3);
+    y3 += 12;
+    autoTable(doc, {
+      startY: y3,
+      head: [["Muda", "Mura", "Muri"]],
+      body: [[String(waste.muda), String(waste.mura), String(waste.muri)]],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+    });
+    y3 = (doc.lastAutoTable?.finalY ?? y3) + 16;
+  }
+
+  if (sec.overload && overloads && overloads.length) {
+    ensureSpace(60);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Station overload vs takt", 40, y3);
+    y3 += 12;
+    autoTable(doc, {
+      startY: y3,
+      head: [["Station", "Load (s)", "Over (s)"]],
+      body: overloads.map((o) => [o.station, String(o.loadSec), String(o.overBy)]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+    });
+    y3 = (doc.lastAutoTable?.finalY ?? y3) + 16;
+  }
+
+  if (sec.taktTool && taktCalcSec != null) {
+    ensureSpace(30);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Takt calculator", 40, y3);
+    y3 += 14;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(40);
+    doc.text(
+      `Available ${availableTimeMin ?? 420} min ÷ demand ${demandPerShift ?? 100} u/shift → ${taktCalcSec}s (line takt ${schedule.takt}s).`,
+      40,
+      y3,
+      { maxWidth: pageW - 80 },
+    );
+  }
 
   // Footer
   const nPages = doc.internal.getNumberOfPages();

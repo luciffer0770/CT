@@ -54,6 +54,10 @@ export default function Icon({ name, size = 14, stroke = 1.6, className = "", st
       return (<svg {...common}><path d="M9 6l6 6-6 6"/></svg>);
     case "chev-left":
       return (<svg {...common}><path d="M15 6l-6 6 6 6"/></svg>);
+    case "panel-left":
+      return (<svg {...common}><rect x="3" y="4" width="6" height="16" rx="1"/><path d="M13 8h8"/><path d="M13 12h5"/><path d="M13 16h8"/></svg>);
+    case "panel-right":
+      return (<svg {...common}><rect x="15" y="4" width="6" height="16" rx="1"/><path d="M3 8h8"/><path d="M6 12h5"/><path d="M3 16h8"/></svg>);
     case "arrow-up":
       return (<svg {...common}><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>);
     case "arrow-down":
