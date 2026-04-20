@@ -142,14 +142,14 @@ export function TopBar({ schedule }) {
           <span className="dot" style={{ background: "var(--red)", boxShadow: "0 0 0 3px rgba(225,29,46,.18)" }}/>
           <div>
             <div className="lbl">Bottleneck</div>
-            <div className="val" style={{ fontSize: 12 }}>{bottleneck ? bottleneck.name : "—"}</div>
+            <div className="val allow-wrap" style={{ fontSize: 12 }} title={bottleneck ? bottleneck.name : ""}>{bottleneck ? bottleneck.name : "—"}</div>
           </div>
         </div>
         <div className="metric-chip">
           <span className="dot" style={{ background: "var(--cyan)" }}/>
           <div>
             <div className="lbl">Line</div>
-            <div className="val" style={{ fontSize: 12 }}>{settings.line} · {settings.shift}</div>
+            <div className="val allow-wrap" style={{ fontSize: 12 }} title={`${settings.line} · ${settings.shift}`}>{settings.line} · {settings.shift}</div>
           </div>
         </div>
       </div>

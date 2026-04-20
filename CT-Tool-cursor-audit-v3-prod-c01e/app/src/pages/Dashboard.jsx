@@ -102,11 +102,11 @@ export default function Dashboard({ schedule }) {
           <div className="spark"><Spark data={effTrend} color="#22C55E"/></div>
         </div>
         <div className="kpi accent-red">
-          <div className="kpi-top"><div className="lbl">Bottlenecks</div><span className="delta flat">on path</span></div>
-          <div className="val">1<span className="u"> of {steps.length}</span></div>
+          <div className="kpi-top"><div className="lbl">Bottleneck</div><span className="delta flat">critical path</span></div>
+          <div className="val" title={bottleneck?.name || ""}>{bottleneck?.name || "—"}</div>
           <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-3)" }}>
             <Icon name="alert" size={12} style={{ color: "var(--red)", verticalAlign: "middle" }}/>{" "}
-            <b style={{ color: "var(--red)" }}>{bottleneck?.name || "—"}</b> holds critical path
+            One of <b>{steps.length}</b> steps sets line cadence when on the critical path.
           </div>
         </div>
         <div className="kpi accent-cyan">
@@ -160,6 +160,11 @@ export default function Dashboard({ schedule }) {
               totalCT={totalCycleTime}
               takt={taktTime}
               tickEvery={40}
+              showDeps
+              highlightCritical
+              virtualize
+              virtualMaxRows={28}
+              fillParent
               onStepClick={(s) => { setSelectedId(s.id); setPage("builder"); }}
             />
           </div>

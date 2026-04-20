@@ -52,7 +52,13 @@ export default function Gantt({
   const rowH = compact ? 30 : height;
   const HEAD_H = 27; // .gantt-head height (26 content + 1 border)
   const trackWidth = Math.max(200, w - labelWidth - 2);
-  const maxX = Math.max(totalCT, takt) * 1.05 || 1;
+  const maxEndTime = Math.max(
+    1,
+    ...steps.map((s) => Number(s.endTime) || 0),
+    Number(totalCT) || 0,
+    Number(takt) || 0,
+  );
+  const maxX = maxEndTime * 1.06;
   const scale = trackWidth / maxX;
 
   const ticks = useMemo(() => {
@@ -274,7 +280,18 @@ export default function Gantt({
               />
             )}
             {showDeps && totalRows > 0 && (
-              <div className="gantt-deps-layer" style={{ position: "absolute", left: 0, top: 0, width: "100%", height: bodyH, zIndex: 3, pointerEvents: "none" }}>
+              <div
+                className="gantt-deps-layer"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  width: Math.max(w, labelWidth + maxX * scale + 24),
+                  height: bodyH,
+                  zIndex: 4,
+                  pointerEvents: "none",
+                }}
+              >
                 <DependencyOverlay
                   steps={steps}
                   byId={byId}
@@ -282,7 +299,7 @@ export default function Gantt({
                   headH={overlayHead}
                   labelWidth={labelWidth}
                   scale={scale}
-                  totalW={w}
+                  totalW={Math.max(w, labelWidth + maxX * scale + 24)}
                   totalH={overlayTotalH}
                 />
               </div>
@@ -311,7 +328,7 @@ export default function Gantt({
               headH={HEAD_H}
               labelWidth={labelWidth}
               scale={scale}
-              totalW={w}
+              totalW={Math.max(w, labelWidth + maxX * scale + 24)}
               totalH={totalH}
             />
           )}

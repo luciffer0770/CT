@@ -1,16 +1,31 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Scroll + zoom wrapper for wide charts (SVG or HTML).
- * Ctrl/Cmd + wheel zooms; drag to pan; slider + reset in toolbar.
- * Uses CSS `zoom` where supported so overflow scroll matches enlarged content.
+ * Scroll + zoom for wide charts. Uses CSS transform scale + explicit spacer
+ * so the scroll region grows with zoom (avoids `zoom` shrinking content to a corner).
  */
 export default function ChartZoomWrap({ children, title = "Chart" }) {
   const outerRef = useRef(null);
+  const contentRef = useRef(null);
   const [zoom, setZoom] = useState(1);
+  const [dims, setDims] = useState({ w: 0, h: 0 });
   const drag = useRef({ on: false, x: 0, y: 0, sl: 0, st: 0 });
 
   const clamp = (z) => Math.min(2.5, Math.max(0.45, Math.round(z * 100) / 100));
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      if (w > 0 && h > 0) setDims({ w, h });
+    };
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, [children]);
 
   const onWheel = useCallback((e) => {
     if (!e.ctrlKey && !e.metaKey) return;
@@ -48,6 +63,9 @@ export default function ChartZoomWrap({ children, title = "Chart" }) {
     }
   }, [zoom]);
 
+  const zw = Math.max(1, dims.w * zoom);
+  const zh = Math.max(1, dims.h * zoom);
+
   return (
     <div className="chart-zoom-wrap">
       <div className="chart-zoom-toolbar" role="toolbar" aria-label={`${title} zoom`}>
@@ -79,14 +97,28 @@ export default function ChartZoomWrap({ children, title = "Chart" }) {
         style={{ cursor: zoom > 1.02 ? "grab" : "default" }}
       >
         <div
-          className="chart-zoom-inner"
+          className="chart-zoom-spacer"
           style={{
-            display: "inline-block",
+            width: zw,
+            height: zh,
+            position: "relative",
             minWidth: "100%",
-            zoom,
           }}
         >
-          {children}
+          <div
+            ref={contentRef}
+            className="chart-zoom-inner"
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: `scale(${zoom})`,
+              transformOrigin: "0 0",
+              willChange: "transform",
+            }}
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>

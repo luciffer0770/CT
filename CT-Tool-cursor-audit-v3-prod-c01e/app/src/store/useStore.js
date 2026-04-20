@@ -577,11 +577,56 @@ function hashPage() {
   return h ? h.split("?")[0] : null;
 }
 
+function hexToRgb(hex) {
+  const m = String(hex || "").trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function mixRgb(a, b, t) {
+  return {
+    r: Math.round(a.r + (b.r - a.r) * t),
+    g: Math.round(a.g + (b.g - a.g) * t),
+    b: Math.round(a.b + (b.b - a.b) * t),
+  };
+}
+
+function rgbStr(c) {
+  return `${c.r}, ${c.g}, ${c.b}`;
+}
+
+/** Map Settings accent → global UI tokens (--accent*, --blue* aliases in CSS). */
+function applyAccentDom(settings) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  const rgb = hexToRgb(settings.accent || "#1E40AF");
+  if (!rgb) return;
+  const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  const pale = mixRgb(rgb, { r: 255, g: 255, b: 255 }, 0.9);
+  const hover = lum > 0.55 ? mixRgb(rgb, { r: 15, g: 16, b: 35 }, 0.14) : mixRgb(rgb, { r: 255, g: 255, b: 255 }, 0.1);
+  const rs = rgbStr(rgb);
+  root.style.setProperty("--accent", settings.accent);
+  root.style.setProperty("--accent-50", `rgb(${rgbStr(pale)})`);
+  root.style.setProperty("--accent-contrast", lum > 0.55 ? "#0B1020" : "#ffffff");
+  root.style.setProperty("--accent-hover", `rgb(${rgbStr(hover)})`);
+  root.style.setProperty("--accent-ring", `rgba(${rs}, 0.14)`);
+  root.style.setProperty("--accent-a06", `rgba(${rs}, 0.06)`);
+  root.style.setProperty("--accent-a10", `rgba(${rs}, 0.10)`);
+  root.style.setProperty("--accent-a12", `rgba(${rs}, 0.12)`);
+  root.style.setProperty("--accent-a18", `rgba(${rs}, 0.18)`);
+  root.style.setProperty("--accent-a22", `rgba(${rs}, 0.22)`);
+  root.style.setProperty("--accent-a25", `rgba(${rs}, 0.25)`);
+  root.style.setProperty("--accent-a30", `rgba(${rs}, 0.30)`);
+  root.style.setProperty("--accent-a85", `rgba(${rs}, 0.85)`);
+}
+
 function applyThemeDom(settings) {
   if (typeof document === "undefined") return;
   const b = document.body;
   b.classList.toggle("theme-dark", settings.theme === "dark");
   b.classList.toggle("compact", !!settings.compact);
+  applyAccentDom(settings);
 }
 
 if (typeof window !== "undefined") {

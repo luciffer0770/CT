@@ -1,10 +1,55 @@
 /**
  * 42-step showcase: linear chain → parallel pair → merge → long tail.
- * Includes NVA step, waste tags (muda/mura/muri), notes, transfer times,
- * one heavy bottleneck step, and shared stations for serialize-station demos.
+ * Realistic assembly-style step names, NVA + waste tags, notes, transfers,
+ * bottleneck, shared stations (serialize same station → queue + heatmap).
  */
 
 const STATIONS = ["ST-1", "ST-2", "ST-3", "ST-4", "ST-5", "ST-6"];
+
+/** Plausible sub-assembly line operations (generic manufacturing, no trademarks) */
+const OP_NAMES = [
+  "Raw kit scan & route",
+  "Bracket A press-fit",
+  "Bracket B torque (M6)",
+  "Housing deburr & blow-off",
+  "PCB staging to fixture",
+  "Conformal coat dip",
+  "Coat cure oven exit",
+  "Inspection hold (NVA demo)",
+  "Harness route & clip-in",
+  "Connector crimp station 1",
+  "Connector crimp station 2",
+  "Sub-assembly leak prep",
+  "Parallel pack A — merge cell",
+  "Parallel pack B — merge cell",
+  "Merge & alignment check",
+  "Thermal pad apply",
+  "Heat-sink clip torque",
+  "Heavy CNC cycle (bottleneck demo)",
+  "Motor mount align & pin",
+  "Belt tension set & lock",
+  "Encoder index learn",
+  "Line speed ramp check",
+  "Vision verify fiducials",
+  "EOL functional test",
+  "HV isolation check",
+  "Burn-in rack load",
+  "Burn-in unload & log",
+  "Label print & apply",
+  "Serial capture & MES OK",
+  "Anti-tamper seal press",
+  "Pack inner foam insert",
+  "Pack outer carton fold",
+  "Void-fill & tape head",
+  "Pallet pattern build",
+  "Stretch-wrap & band",
+  "AGV hand-off staging",
+  "Shipping doc print",
+  "Final QA spot audit",
+  "Rework buffer discharge",
+  "Scrap cage reconcile",
+  "Shift handover notes",
+];
 
 export const LONG_TRAIL_42_STEPS = (() => {
   const steps = [];
@@ -14,7 +59,7 @@ export const LONG_TRAIL_42_STEPS = (() => {
     const i = n - 1;
     let dependencies = [];
     let groupId = null;
-    let name = `Process ${n} — ${STATIONS[i % STATIONS.length]}`;
+    let name = `${OP_NAMES[i] ?? `Operation ${n}`} · ${STATIONS[i % STATIONS.length]}`;
     let machineTime = 8 + (i % 9);
     let operatorTime = 4 + (i % 6);
     let setupTime = i % 7 === 0 ? 6 : 2;
@@ -36,7 +81,6 @@ export const LONG_TRAIL_42_STEPS = (() => {
     } else if (n === 14 || n === 15) {
       dependencies = [id(12), id(13)];
       groupId = "g-demo-parallel";
-      name = n === 14 ? "Parallel path A — merge cell" : "Parallel path B — merge cell";
     } else if (n === 16) {
       dependencies = [id(14), id(15)];
     } else {
@@ -46,7 +90,6 @@ export const LONG_TRAIL_42_STEPS = (() => {
     if (n === 7) {
       isValueAdded = false;
       wasteType = "muda";
-      name = "Inspection hold (NVA demo) — ST-2";
       notes = "Uncheck Value-added affects VA% / efficiency KPIs.";
     }
     if (n === 22) {
@@ -63,7 +106,6 @@ export const LONG_TRAIL_42_STEPS = (() => {
       operatorTime = 10;
       setupTime = 8;
       stationId = "ST-2";
-      name = "Heavy station cycle (bottleneck demo) — ST-2";
       notes = "Dominant critical-path step — try Simulation sliders.";
     }
 

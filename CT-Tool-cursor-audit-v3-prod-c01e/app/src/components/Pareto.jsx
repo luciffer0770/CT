@@ -42,7 +42,9 @@ export default function Pareto({ steps, height = 240 }) {
             <rect x={x} y={y} width={bw} height={h} fill={d.cumPct <= 80 ? "#E11D2E" : "#1E40AF"} rx="2">
               <title>{d.name} · {d.value}s · {d.cumPct.toFixed(0)}% cumulative</title>
             </rect>
-            <text x={x + bw / 2} y={innerH + 12} textAnchor="middle" fontSize="9" fill="#5B6274">{d.name.split(" ")[0]}</text>
+            <text x={x + bw / 2} y={innerH + 12} textAnchor="middle" fontSize="8" fill="#5B6274">
+              {d.name.length > 10 ? `${d.name.slice(0, 9)}…` : d.name}
+            </text>
             <text x={x + bw / 2} y={innerH + 25} textAnchor="middle" fontSize="9" fill="#8A92A6">{d.cumPct.toFixed(0)}%</text>
           </g>
         );
