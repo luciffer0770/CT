@@ -74,8 +74,8 @@ export default function Gantt({
   );
 
   const totalRows = steps.length;
-  /** Dependency lines need full-row geometry; keep full render when showing deps */
-  const useVirtual = virtualize && totalRows > virtualMaxRows && !showDeps;
+  /** Virtualize long lists; dependency SVG is full-height and drawn above rows so lines stay visible */
+  const useVirtual = virtualize && totalRows > virtualMaxRows;
   const bodyH = totalRows * rowH;
   const [viewportH, setViewportH] = useState(400);
   useEffect(() => {
@@ -258,6 +258,9 @@ export default function Gantt({
           }
         >
           <div style={{ position: "relative", minHeight: bodyH }}>
+            <div style={{ height: topSpacer }} aria-hidden />
+            {visibleSteps.map((s, i) => renderRow(s, i))}
+            <div style={{ height: bottomSpacer }} aria-hidden />
             {showTakt && totalRows > 0 && (
               <div
                 className="takt-line"
@@ -266,24 +269,24 @@ export default function Gantt({
                   top: 0,
                   height: bodyH,
                   position: "absolute",
+                  zIndex: 2,
                 }}
               />
             )}
             {showDeps && totalRows > 0 && (
-              <DependencyOverlay
-                steps={steps}
-                byId={byId}
-                rowH={rowH}
-                headH={overlayHead}
-                labelWidth={labelWidth}
-                scale={scale}
-                totalW={w}
-                totalH={overlayTotalH}
-              />
+              <div className="gantt-deps-layer" style={{ position: "absolute", left: 0, top: 0, width: "100%", height: bodyH, zIndex: 3, pointerEvents: "none" }}>
+                <DependencyOverlay
+                  steps={steps}
+                  byId={byId}
+                  rowH={rowH}
+                  headH={overlayHead}
+                  labelWidth={labelWidth}
+                  scale={scale}
+                  totalW={w}
+                  totalH={overlayTotalH}
+                />
+              </div>
             )}
-            <div style={{ height: topSpacer }} aria-hidden />
-            {visibleSteps.map((s, i) => renderRow(s, i))}
-            <div style={{ height: bottomSpacer }} aria-hidden />
           </div>
         </div>
       ) : (

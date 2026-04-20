@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import Icon from "../components/Icon.jsx";
+import ChartZoomWrap from "../components/ChartZoomWrap.jsx";
 import { Donut, HBar, Histogram } from "../components/Charts.jsx";
 import Yamazumi from "../components/Yamazumi.jsx";
 import Pareto from "../components/Pareto.jsx";
@@ -54,7 +55,9 @@ export default function Analytics({ schedule }) {
         <div className="card col-12">
           <div className="card-head"><h3>Pareto (80/20)</h3><span className="sub">VITAL FEW vs USEFUL MANY</span></div>
           <div className="card-body">
-            <Pareto steps={steps}/>
+            <ChartZoomWrap title="Pareto chart">
+              <Pareto steps={steps}/>
+            </ChartZoomWrap>
           </div>
         </div>
 
@@ -62,7 +65,9 @@ export default function Analytics({ schedule }) {
         <div className="card col-8">
           <div className="card-head"><h3>Yamazumi — Load per Station</h3><span className="sub">STACKED BY STEP · TAKT REFERENCE</span></div>
           <div className="card-body">
-            <Yamazumi steps={steps} takt={taktTime}/>
+            <ChartZoomWrap title="Yamazumi chart">
+              <Yamazumi steps={steps} takt={taktTime}/>
+            </ChartZoomWrap>
           </div>
         </div>
 
@@ -114,7 +119,9 @@ export default function Analytics({ schedule }) {
         <div className="card col-6">
           <div className="card-head"><h3>Cycle-time Distribution</h3><span className="sub">SIMULATED · 30 UNITS</span></div>
           <div className="card-body">
-            <Histogram totalCT={schedule.totalCycleTime} takt={taktTime}/>
+            <ChartZoomWrap title="Histogram">
+              <Histogram totalCT={schedule.totalCycleTime} takt={taktTime}/>
+            </ChartZoomWrap>
           </div>
         </div>
 

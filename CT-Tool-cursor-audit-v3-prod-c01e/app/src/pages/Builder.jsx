@@ -341,6 +341,7 @@ export default function Builder({ schedule }) {
               tickEvery={40}
               labelWidth={150}
               compact
+              showDeps
               highlightCritical={highlightCriticalPath}
               virtualize
               virtualMaxRows={28}
@@ -349,7 +350,7 @@ export default function Builder({ schedule }) {
             />
           </div>
           <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, fontSize: 11.5, color: "var(--ink-3)" }}>
-            <Icon name="clock" size={13}/> Real-time schedule · scroll for long models (use Schedule → Deps for arrows).
+            <Icon name="clock" size={13}/> Real-time schedule · dependency lines stay on top when scrolling long lines.
           </div>
         </div>
 

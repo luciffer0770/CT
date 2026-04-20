@@ -624,6 +624,41 @@ body {
   color: var(--red); background: var(--surface); padding: 1px 4px;
   border: 1px solid rgba(225,29,46,.3); border-radius: 2px;
 }
+/* Analytics chart zoom / pan */
+.chart-zoom-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.chart-zoom-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.chart-zoom-toolbar input[type="range"] {
+  flex: 1;
+  min-width: 120px;
+  max-width: 280px;
+  accent-color: var(--blue);
+}
+.chart-zoom-scroll {
+  max-height: min(72vh, 520px);
+  overflow: auto;
+  padding: 10px;
+  overscroll-behavior: contain;
+}
+.chart-zoom-inner {
+  display: inline-block;
+  vertical-align: top;
+}
+
 .dep-line {
   stroke: var(--ink-4);
   stroke-width: 1.25;
