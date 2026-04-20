@@ -16,6 +16,7 @@ import {
   stationOverloadVsTakt,
   takt as taktFromDemand,
 } from "../engine/analytics.js";
+import { formatMoney } from "../engine/currency.js";
 
 const REPORT_SECTIONS_KEY = "cta_report_sections_v2";
 
@@ -53,7 +54,7 @@ export default function Reports({ schedule }) {
   const highlightCriticalPath = useStore(s => s.highlightCriticalPath);
 
   const [selectedReport, setSelectedReport] = useState(0);
-  const [page, setPage] = useState(1);
+  const [previewPage, setPreviewPage] = useState(1);
   const [sections, setSections] = useState(loadReportSections);
 
   useEffect(() => {
@@ -165,6 +166,7 @@ export default function Reports({ schedule }) {
       machineRate: settings.machineRate,
       availableTimeMin: settings.availableTimeMin,
       demandPerShift: settings.demandPerShift,
+      currency: settings.currency || "USD",
     });
   };
 
@@ -182,7 +184,6 @@ export default function Reports({ schedule }) {
               <Icon name="history" size={13}/> Restore this version
             </button>
           )}
-          <button className="btn" onClick={() => window.print()}><Icon name="report" size={13}/> Print</button>
           <button
             className="btn"
             onClick={() => exportStepsToExcel(
@@ -227,7 +228,7 @@ export default function Reports({ schedule }) {
               <div
                 key={r.id}
                 className="report-row"
-                onClick={() => { setSelectedReport(i); setPage(1); }}
+                onClick={() => { setSelectedReport(i); setPreviewPage(1); }}
                 style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: i === selectedReport ? "var(--blue-50)" : "transparent" }}
               >
                 <div>
@@ -247,9 +248,9 @@ export default function Reports({ schedule }) {
               <div className="sub" style={{ marginTop: 2 }}>{settings.shift} · {settings.line} · {new Date().toLocaleDateString()}</div>
             </div>
             <div className="toolbar">
-              <button className="btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><Icon name="chev-left" size={13}/></button>
-              <button className="btn ghost" title="Current page">Page {page} / {TOTAL_PAGES}</button>
-              <button className="btn" onClick={() => setPage(p => Math.min(TOTAL_PAGES, p + 1))} disabled={page >= TOTAL_PAGES}><Icon name="chev-right" size={13}/></button>
+              <button className="btn" onClick={() => setPreviewPage((p) => Math.max(1, p - 1))} disabled={previewPage <= 1}><Icon name="chev-left" size={13}/></button>
+              <button className="btn ghost" title="Current page">Page {previewPage} / {TOTAL_PAGES}</button>
+              <button className="btn" onClick={() => setPreviewPage((p) => Math.min(TOTAL_PAGES, p + 1))} disabled={previewPage >= TOTAL_PAGES}><Icon name="chev-right" size={13}/></button>
             </div>
           </div>
           <div className="card-body" style={{ background: "var(--bg-2)", padding: 16 }}>
@@ -290,7 +291,7 @@ export default function Reports({ schedule }) {
                 </div>
               )}
 
-              {page === 1 && (
+              {previewPage === 1 && (
                 <>
                   {sections.steps ? (
                   <>
@@ -317,7 +318,7 @@ export default function Reports({ schedule }) {
                 </>
               )}
 
-              {page === 2 && (
+              {previewPage === 2 && (
                 <>
                   {sections.gantt && (
                     <>
@@ -350,18 +351,18 @@ export default function Reports({ schedule }) {
                 </>
               )}
 
-              {page === 3 && (
+              {previewPage === 3 && (
                 <>
                   {sections.cost && (
                     <>
                       <h3 style={headStyle}>Cost &amp; Throughput</h3>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                        <ReportTile k="Labour / unit" v={`$${cost.labor.toFixed(3)}`}/>
-                        <ReportTile k="Machine / unit" v={`$${cost.machine.toFixed(3)}`}/>
-                        <ReportTile k="Total / unit" v={`$${cost.total.toFixed(2)}`}/>
+                        <ReportTile k="Labour / unit" v={formatMoney(cost.labor, settings.currency || "USD", 3)}/>
+                        <ReportTile k="Machine / unit" v={formatMoney(cost.machine, settings.currency || "USD", 3)}/>
+                        <ReportTile k="Total / unit" v={formatMoney(cost.total, settings.currency || "USD", 2)}/>
                         <ReportTile k="Units / hour" v={Math.floor(3600 / Math.max(1, displaySchedule.takt))}/>
-                        <ReportTile k="Labour rate" v={`$${settings.laborRate}/hr`}/>
-                        <ReportTile k="Machine rate" v={`$${settings.machineRate}/hr`}/>
+                        <ReportTile k="Labour rate" v={`${formatMoney(settings.laborRate, settings.currency || "USD", 0)}/hr`}/>
+                        <ReportTile k="Machine rate" v={`${formatMoney(settings.machineRate, settings.currency || "USD", 0)}/hr`}/>
                       </div>
                     </>
                   )}
@@ -450,7 +451,7 @@ export default function Reports({ schedule }) {
 
               <div className="mono muted" style={{ marginTop: 22, display: "flex", justifyContent: "space-between", fontSize: 10, color: "#8A92A6" }}>
                 <span>CYCLE TIME ANALYZER · INDUSTRIAL EDITION</span>
-                <span>PAGE {page} / {TOTAL_PAGES}</span>
+                <span>PAGE {previewPage} / {TOTAL_PAGES}</span>
               </div>
             </div>
           </div>

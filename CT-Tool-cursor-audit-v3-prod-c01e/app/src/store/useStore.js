@@ -41,6 +41,8 @@ const DEFAULT_SETTINGS = {
   profileAvatarColor: "#6D28D9",
   /** When true, each station ID is treated as one machine — overlapping work at that station is serialized in topo order */
   serializeStations: false,
+  /** USD | EUR | INR — labor/machine rates are in this currency per hour */
+  currency: "USD",
 };
 
 function genId(prefix = "s") {
@@ -377,12 +379,23 @@ export const useStore = create((set, get) => ({
     const t = TEMPLATES.find(x => x.id === templateId);
     if (!t) return;
     const prev = get()._snapshot();
+    const nextMultilines = Array.isArray(t.multilines) ? deepClone(t.multilines) : get().multilines;
+    const demo = t.demoSettings && typeof t.demoSettings === "object" ? t.demoSettings : null;
+    const nextSettings = demo
+      ? { ...DEFAULT_SETTINGS, ...get().settings, ...demo }
+      : get().settings;
     set({
       steps: deepClone(t.steps),
       baselineSteps: deepClone(t.steps),
       taktTime: t.taktTime,
       selectedId: t.steps[0]?.id,
+      multilines: nextMultilines,
+      settings: nextSettings,
     });
+    if (demo) {
+      saveSettings(nextSettings);
+      applyThemeDom(nextSettings);
+    }
     get().pushActivity(`Loaded template "${t.name}"`, "imp");
     get()._push(prev);
     get()._autosave();
@@ -464,6 +477,7 @@ export const useStore = create((set, get) => ({
   },
 
   resetAll: () => {
+    const fresh = { ...DEFAULT_SETTINGS };
     set({
       steps: deepClone(DEFAULT_STEPS),
       baselineSteps: deepClone(DEFAULT_STEPS),
@@ -471,9 +485,12 @@ export const useStore = create((set, get) => ({
       selectedId: DEFAULT_STEPS[0]?.id,
       versions: [],
       multilines: [],
+      settings: fresh,
       _past: [],
       _future: [],
     });
+    saveSettings(fresh);
+    applyThemeDom(fresh);
     localStorage.removeItem("cta_project_v1");
     localStorage.removeItem("cta_versions_v1");
     saveLastExportFingerprint("");

@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { paretoSteps, costPerUnit } from "./analytics.js";
+import { formatMoney } from "./currency.js";
 
 export function exportReportToPDF({
   project,
@@ -17,6 +18,7 @@ export function exportReportToPDF({
   machineRate,
   availableTimeMin,
   demandPerShift,
+  currency = "USD",
 }) {
   const sec = {
     kpi: true,
@@ -203,6 +205,7 @@ export function exportReportToPDF({
   if (sec.cost) {
     ensureSpace(80);
     const cost = costPerUnit(schedule.steps, { laborRate: laborRate ?? 35, machineRate: machineRate ?? 80 });
+    const cur = currency || "USD";
     doc.setFont("helvetica", "bold"); doc.setFontSize(12);
     doc.setTextColor(20);
     doc.text("Cost & throughput", 40, y3);
@@ -211,10 +214,12 @@ export function exportReportToPDF({
       startY: y3,
       head: [["Item", "Value"]],
       body: [
-        ["Labour / unit", `$${cost.labor.toFixed(3)}`],
-        ["Machine / unit", `$${cost.machine.toFixed(3)}`],
-        ["Total / unit", `$${cost.total.toFixed(2)}`],
+        ["Labour / unit", formatMoney(cost.labor, cur, 3)],
+        ["Machine / unit", formatMoney(cost.machine, cur, 3)],
+        ["Total / unit", formatMoney(cost.total, cur, 2)],
         ["Units / hr @ takt", `${Math.floor(3600 / Math.max(1, schedule.takt))}`],
+        ["Labour rate", `${formatMoney(laborRate ?? 35, cur, 0)}/hr`],
+        ["Machine rate", `${formatMoney(machineRate ?? 80, cur, 0)}/hr`],
       ],
       styles: { fontSize: 9 },
       headStyles: { fillColor: [30, 64, 175], textColor: 255 },

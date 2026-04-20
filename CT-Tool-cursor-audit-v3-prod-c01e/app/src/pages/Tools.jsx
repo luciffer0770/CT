@@ -3,6 +3,7 @@ import Icon from "../components/Icon.jsx";
 import PageCrumbs from "../components/PageCrumbs.jsx";
 import { useStore } from "../store/useStore.js";
 import { takt as taktCalc, costPerUnit, kanbanBins, paretoSteps } from "../engine/analytics.js";
+import { formatMoney } from "../engine/currency.js";
 
 export default function Tools({ schedule }) {
   const settings = useStore(s => s.settings);
@@ -83,23 +84,23 @@ export default function Tools({ schedule }) {
           <div className="card-head"><h3>Cost per Unit</h3><span className="sub">LABOR + MACHINE</span></div>
           <div className="card-body" style={{ display: "grid", gap: 12 }}>
             <div className="slider-row">
-              <div className="k">Labor rate<small>$/hr</small></div>
+              <div className="k">Labor rate<small>per hour (Settings currency)</small></div>
               <input className="input num" type="number" value={settings.laborRate} onChange={(e) => setSettings({ laborRate: Number(e.target.value) || 0 })}/>
-              <div className="v">${settings.laborRate}</div>
+              <div className="v">{formatMoney(settings.laborRate, settings.currency || "USD", 0)}</div>
             </div>
             <div className="slider-row">
-              <div className="k">Machine rate<small>$/hr (depreciation + energy)</small></div>
+              <div className="k">Machine rate<small>per hour (depreciation + energy)</small></div>
               <input className="input num" type="number" value={settings.machineRate} onChange={(e) => setSettings({ machineRate: Number(e.target.value) || 0 })}/>
-              <div className="v">${settings.machineRate}</div>
+              <div className="v">{formatMoney(settings.machineRate, settings.currency || "USD", 0)}</div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-              <Tile k="Labor / unit" v={`$${cost.labor.toFixed(3)}`}/>
-              <Tile k="Machine / unit" v={`$${cost.machine.toFixed(3)}`}/>
-              <Tile k="Total / unit" v={`$${totalCost}`} color="var(--blue)"/>
+              <Tile k="Labor / unit" v={formatMoney(cost.labor, settings.currency || "USD", 3)}/>
+              <Tile k="Machine / unit" v={formatMoney(cost.machine, settings.currency || "USD", 3)}/>
+              <Tile k="Total / unit" v={formatMoney(totalCost, settings.currency || "USD", 2)} color="var(--blue)"/>
             </div>
             <div className="insight" style={{ borderColor: "rgba(109,40,217,.3)", background: "linear-gradient(90deg, var(--violet-50), var(--surface))" }}>
               <div className="ic" style={{ background: "var(--violet)" }}><Icon name="cpu" size={15}/></div>
-              <div className="txt">At {schedule.takt}s takt → <b>{Math.floor(3600 / Math.max(1, schedule.takt))}</b> u/h · hourly cost <b>${(Number(totalCost) * Math.floor(3600 / Math.max(1, schedule.takt))).toFixed(2)}</b>.</div>
+              <div className="txt">At {schedule.takt}s takt → <b>{Math.floor(3600 / Math.max(1, schedule.takt))}</b> u/h · hourly cost <b>{formatMoney(Number(totalCost) * Math.floor(3600 / Math.max(1, schedule.takt)), settings.currency || "USD", 2)}</b>.</div>
             </div>
           </div>
         </div>

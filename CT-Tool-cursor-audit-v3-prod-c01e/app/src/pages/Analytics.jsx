@@ -11,6 +11,7 @@ import {
   lineBalance, variationAnalysis, suggestOptimization, autoLineBalance,
   costPerUnit, wasteTally, stationOverloadVsTakt,
 } from "../engine/analytics.js";
+import { formatMoney } from "../engine/currency.js";
 
 export default function Analytics({ schedule }) {
   const steps = useStore(s => s.steps);
@@ -85,7 +86,7 @@ export default function Analytics({ schedule }) {
                 <Row label="Non VA (setup)" value={`${schedule.sumNVA}s`} dot="var(--red)"/>
                 <Row label="Target VA" value="≥ 85%"/>
                 <Row label="Takt gap" value={`${gap.gap}s`} color={gap.overTakt ? "var(--red)" : "var(--green)"}/>
-                <Row label="Cost / unit" value={`$${cost.total.toFixed(2)}`} color="var(--blue)"/>
+                <Row label="Cost / unit" value={formatMoney(cost.total, settings.currency || "USD", 2)} color="var(--blue)"/>
               </div>
             </div>
           </div>

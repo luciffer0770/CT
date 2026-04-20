@@ -1,4 +1,4 @@
-import { LONG_TRAIL_42_STEPS } from "./long-trail-template.js";
+import { LONG_TRAIL_42_STEPS, LONG_TRAIL_MULTILINE_DEMO } from "./long-trail-template.js";
 
 // Pre-built process templates — industrial standards
 export const TEMPLATES = [
@@ -68,11 +68,22 @@ export const TEMPLATES = [
   },
   {
     id: "tmpl-long-trail-42",
-    name: "Assembly trail — 42 steps (demo)",
-    description: "Linear chain across 8 stations. Enable Serialize same station in Settings for queue wait + heatmap; use Value-added checkbox for VA/NVA KPIs.",
+    name: "Industrial showcase — 42 steps (full demo)",
+    description: "Parallel branch, bottleneck, NVA + waste tags, notes, transfers, multi-line compare snapshot. Applies demo settings (serialize stations, INR rates, line label).",
     sector: "Demo",
     steps: LONG_TRAIL_42_STEPS,
-    taktTime: 280,
+    taktTime: 260,
+    multilines: [LONG_TRAIL_MULTILINE_DEMO],
+    demoSettings: {
+      line: "DEMO-42 Showcase Line",
+      shift: "SHIFT A",
+      serializeStations: true,
+      currency: "INR",
+      laborRate: 520,
+      machineRate: 1850,
+      availableTimeMin: 450,
+      demandPerShift: 110,
+    },
   },
 ];
 

@@ -3,6 +3,7 @@ import Icon from "../components/Icon.jsx";
 import { useStore } from "../store/useStore.js";
 import { TEMPLATES } from "../data/templates.js";
 import { computeSchedule } from "../engine/calc.js";
+import { CURRENCIES, currencySymbol } from "../engine/currency.js";
 
 export default function Settings() {
   const settings = useStore(s => s.settings);
@@ -198,16 +199,28 @@ export default function Settings() {
         <div className="card col-6">
           <div className="card-head"><h3>Rates</h3><span className="sub">COST MODEL</span></div>
           <div className="card-body" style={{ display: "grid", gap: 14 }}>
-            <Row label="Labour rate" help="$/hr — used in cost per unit.">
+            <Row label="Display currency" help="Labour and machine rates are entered in this currency per hour; cost outputs use the same symbol.">
+              <select
+                className="input"
+                style={{ maxWidth: 280 }}
+                value={settings.currency || "USD"}
+                onChange={(e) => set({ currency: e.target.value })}
+              >
+                {Object.entries(CURRENCIES).map(([code, { label }]) => (
+                  <option key={code} value={code}>{label}</option>
+                ))}
+              </select>
+            </Row>
+            <Row label="Labour rate" help={`${currencySymbol(settings.currency || "USD")}/hr — used in cost per unit, Analytics, Tools, Reports, PDF.`}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="muted">$</span>
+                <span className="muted">{currencySymbol(settings.currency || "USD")}</span>
                 <input className="input num" type="number" value={settings.laborRate} onChange={(e) => set({ laborRate: Number(e.target.value) || 0 })}/>
                 <span className="muted" style={{ fontSize: 11 }}>/ hr</span>
               </div>
             </Row>
-            <Row label="Machine rate" help="$/hr — depreciation + energy.">
+            <Row label="Machine rate" help={`${currencySymbol(settings.currency || "USD")}/hr — depreciation + energy.`}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="muted">$</span>
+                <span className="muted">{currencySymbol(settings.currency || "USD")}</span>
                 <input className="input num" type="number" value={settings.machineRate} onChange={(e) => set({ machineRate: Number(e.target.value) || 0 })}/>
                 <span className="muted" style={{ fontSize: 11 }}>/ hr</span>
               </div>

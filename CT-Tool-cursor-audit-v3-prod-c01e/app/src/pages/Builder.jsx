@@ -461,12 +461,24 @@ export default function Builder({ schedule }) {
           )}
 
           <div className="card">
-            <div className="card-head"><h3>Wait &amp; Slack</h3><span className="sub">vs critical path</span></div>
+            <div className="card-head"><h3>Wait &amp; Slack</h3><span className="sub">queue wait vs float after step</span></div>
             <div className="card-body">
-              {schedule.steps.slice(0, 6).map(s => {
+              {schedule.steps.slice(0, 8).map((s) => {
+                const wait = Number(s.waitTime) || 0;
                 const slack = s.critical ? 0 : Math.max(0, schedule.totalCycleTime - s.endTime);
+                const showWait = wait > 0;
+                const val = showWait ? wait : slack;
+                const maxRef = Math.max(20, schedule.totalCycleTime * 0.35, ...schedule.steps.map((x) => Number(x.waitTime) || 0));
                 return (
-                  <HBar key={s.id} label={s.name.split(" ").slice(0, 2).join(" ")} value={slack} max={Math.max(40, schedule.totalCycleTime / 4)} color={slack === 0 ? "var(--red)" : "var(--cyan)"}/>
+                  <HBar
+                    key={s.id}
+                    label={s.name.split(" ").slice(0, 2).join(" ")}
+                    value={val}
+                    max={maxRef}
+                    color={showWait ? "var(--amber)" : slack === 0 ? "var(--red)" : "var(--cyan)"}
+                    suffix="s"
+                    cols="120px 1fr 52px"
+                  />
                 );
               })}
             </div>
@@ -479,7 +491,8 @@ export default function Builder({ schedule }) {
                 <span className="tag red">ACTIVE</span>
               </div>
               <div className="card-body" style={{ fontSize: 12, color: "var(--ink-2)" }}>
-                <b style={{ color: "var(--red)" }}>{schedule.bottleneck?.name}</b> is {((schedule.bottleneck.cycleTime / Math.max(1, schedule.totalCycleTime)) * 100).toFixed(0)}% of cycle and defines takt limit.
+                <b style={{ color: "var(--red)" }}>{schedule.bottleneck?.name}</b> is about{" "}
+                {((schedule.bottleneck.cycleTime / Math.max(1, schedule.totalCycleTime)) * 100).toFixed(0)}% of total cycle time ({schedule.bottleneck.cycleTime}s of {schedule.totalCycleTime}s) and is the current bottleneck on the critical path.
                 <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
                   <button className="btn danger sm" onClick={() => setSelectedId(schedule.bottleneck.id)}>Jump to step</button>
                   <button className="btn sm" onClick={() => setPage("sim")}>Simulate</button>
