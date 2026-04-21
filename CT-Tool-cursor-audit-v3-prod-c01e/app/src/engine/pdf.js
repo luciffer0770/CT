@@ -3,6 +3,24 @@ import autoTable from "jspdf-autotable";
 import { paretoSteps, costPerUnit } from "./analytics.js";
 import { formatMoney } from "./currency.js";
 
+const TABLE_MARGIN = { left: 40, right: 40 };
+const TABLE_OPTS_COMPACT = {
+  margin: TABLE_MARGIN,
+  tableWidth: "wrap",
+  styles: { cellPadding: 3, fontSize: 9, overflow: "linebreak" },
+  headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+  alternateRowStyles: { fillColor: [245, 247, 250] },
+};
+
+/** jsPDF: `maxWidth` must be in the options object (4th arg), never a loose 5th parameter. */
+function drawTextWrapped(doc, text, x, y, maxWidthPt, lineHeightFactor = 1.18) {
+  const lines = doc.splitTextToSize(String(text), maxWidthPt);
+  doc.text(lines, x, y, { maxWidth: 0, lineHeightFactor });
+  const fs = doc.getFontSize();
+  const n = Array.isArray(lines) ? lines.length : 1;
+  return y + n * fs * lineHeightFactor;
+}
+
 export function exportReportToPDF({
   project,
   schedule,
@@ -115,8 +133,9 @@ export function exportReportToPDF({
     doc.setFont("helvetica", "normal");
     let iy = tableStartY + 12;
     insights.slice(0, 5).forEach((line) => {
-      doc.text(`• ${String(line).slice(0, 118)}`, 44, iy);
-      iy += 11;
+      const block = `• ${String(line).slice(0, 400)}`;
+      iy = drawTextWrapped(doc, block, 44, iy, pageW - 88, 1.18);
+      iy += 2;
     });
     tableStartY = iy + 8;
   }
@@ -138,9 +157,20 @@ export function exportReportToPDF({
         `${s.waitTime}s`,
         s.bottleneck ? "BOTTLENECK" : s.critical ? "CRITICAL" : "OPTIMAL",
       ]),
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
+      ...TABLE_OPTS_COMPACT,
+      columnStyles: {
+        0: { cellWidth: 22, halign: "right" },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 52 },
+        3: { cellWidth: 34, halign: "right" },
+        4: { cellWidth: 34, halign: "right" },
+        5: { cellWidth: 30, halign: "right" },
+        6: { cellWidth: 34, halign: "right" },
+        7: { cellWidth: 34, halign: "right" },
+        8: { cellWidth: 34, halign: "right" },
+        9: { cellWidth: 30, halign: "right" },
+        10: { cellWidth: 52, halign: "center" },
+      },
       didDrawCell: (data) => {
         if (data.section === "body" && data.column.index === 10) {
           const v = data.cell.raw;
@@ -159,12 +189,16 @@ export function exportReportToPDF({
   }
 
   doc.addPage();
+  const pageH = doc.internal.pageSize.getHeight();
+  const footerReserve = 36;
   let y2 = 50;
   if (sec.gantt) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.setTextColor(20);
     doc.text("Gantt Snapshot", 40, y2);
-    drawGantt(doc, schedule, 40, y2 + 20, pageW - 80, 320);
-    y2 += 360;
+    const ganttH = Math.min(300, pageH - y2 - footerReserve - 24);
+    drawGantt(doc, schedule, 40, y2 + 18, pageW - 80, ganttH);
+    y2 += 22 + ganttH + 12;
   } else {
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(120);
     doc.text("Gantt section omitted (disabled in report contents).", 40, y2);
@@ -181,22 +215,27 @@ export function exportReportToPDF({
       head: [["#", "Step", "Cycle", "Cumulative %", "Zone"]],
       body: pareto.map((d, i) => [
         i + 1,
-        String(d.name).slice(0, 36),
+        String(d.name).slice(0, 48),
         `${d.value}s`,
         `${d.cumPct.toFixed(1)}%`,
         d.cumPct <= 80 ? "VITAL FEW" : "USEFUL MANY",
       ]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+      ...TABLE_OPTS_COMPACT,
+      styles: { ...TABLE_OPTS_COMPACT.styles, fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 24, halign: "right" },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 40, halign: "right" },
+        3: { cellWidth: 52, halign: "right" },
+        4: { cellWidth: 72, halign: "center" },
+      },
     });
     y2 = (doc.lastAutoTable?.finalY ?? y2 + 100) + 16;
   }
 
-  doc.addPage();
-  let y3 = 50;
-  const pageH = doc.internal.pageSize.getHeight();
+  let y3 = y2;
   const ensureSpace = (need) => {
-    if (y3 + need > pageH - 40) {
+    if (y3 + need > pageH - footerReserve) {
       doc.addPage();
       y3 = 50;
     }
@@ -221,8 +260,8 @@ export function exportReportToPDF({
         ["Labour rate", `${formatMoney(laborRate ?? 35, cur, 0)}/hr`],
         ["Machine rate", `${formatMoney(machineRate ?? 80, cur, 0)}/hr`],
       ],
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+      ...TABLE_OPTS_COMPACT,
+      columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 100, halign: "right" } },
     });
     y3 = (doc.lastAutoTable?.finalY ?? y3) + 20;
   }
@@ -233,10 +272,9 @@ export function exportReportToPDF({
     doc.text("Critical path", 40, y3);
     y3 += 14;
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(40);
-    const chain = schedule.steps.filter((s) => s.critical).map((s) => s.name).join(" → ") || "—";
-    const lines = doc.splitTextToSize(chain, pageW - 80);
-    doc.text(lines, 40, y3);
-    y3 += lines.length * 11 + 8;
+    const chain = schedule.steps.filter((s) => s.critical).map((s) => s.name).join(" -> ") || "—";
+    y3 = drawTextWrapped(doc, chain, 40, y3, pageW - 80, 1.18);
+    y3 += 6;
     doc.setTextColor(100);
     doc.text(`Path work sum: ${schedule.criticalPathWorkSum ?? "—"}s · CT: ${schedule.totalCycleTime}s`, 40, y3);
     y3 += 18;
@@ -258,9 +296,8 @@ export function exportReportToPDF({
       noted.slice(0, 12).forEach((s) => {
         ensureSpace(24);
         doc.setTextColor(40);
-        const t = doc.splitTextToSize(`${s.name}: ${s.notes}`, pageW - 80);
-        doc.text(t, 40, y3);
-        y3 += t.length * 11 + 4;
+        y3 = drawTextWrapped(doc, `${s.name}: ${s.notes}`, 40, y3, pageW - 80, 1.18);
+        y3 += 4;
       });
     }
   }
@@ -275,8 +312,14 @@ export function exportReportToPDF({
       startY: y3,
       head: [["A", "P", "Q", "OEE"]],
       body: [[`${oee.availability}%`, `${oee.performance}%`, `${oee.quality}%`, `${oee.oee}%`]],
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+      ...TABLE_OPTS_COMPACT,
+      styles: { ...TABLE_OPTS_COMPACT.styles, fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 56, halign: "center" },
+        1: { cellWidth: 56, halign: "center" },
+        2: { cellWidth: 56, halign: "center" },
+        3: { cellWidth: 64, halign: "center" },
+      },
     });
     y3 = (doc.lastAutoTable?.finalY ?? y3) + 16;
   }
@@ -290,8 +333,13 @@ export function exportReportToPDF({
       startY: y3,
       head: [["Muda", "Mura", "Muri"]],
       body: [[String(waste.muda), String(waste.mura), String(waste.muri)]],
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+      ...TABLE_OPTS_COMPACT,
+      styles: { ...TABLE_OPTS_COMPACT.styles, fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 48, halign: "center" },
+        1: { cellWidth: 48, halign: "center" },
+        2: { cellWidth: 48, halign: "center" },
+      },
     });
     y3 = (doc.lastAutoTable?.finalY ?? y3) + 16;
   }
@@ -305,8 +353,12 @@ export function exportReportToPDF({
       startY: y3,
       head: [["Station", "Load (s)", "Over (s)"]],
       body: overloads.map((o) => [o.station, String(o.loadSec), String(o.overBy)]),
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255 },
+      ...TABLE_OPTS_COMPACT,
+      columnStyles: {
+        0: { cellWidth: "auto" },
+        1: { cellWidth: 72, halign: "right" },
+        2: { cellWidth: 72, halign: "right" },
+      },
     });
     y3 = (doc.lastAutoTable?.finalY ?? y3) + 16;
   }
@@ -317,12 +369,9 @@ export function exportReportToPDF({
     doc.text("Takt calculator", 40, y3);
     y3 += 14;
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(40);
-    doc.text(
-      `Available ${availableTimeMin ?? 420} min ÷ demand ${demandPerShift ?? 100} u/shift → ${taktCalcSec}s (line takt ${schedule.takt}s).`,
-      40,
-      y3,
-      { maxWidth: pageW - 80 },
-    );
+    const taktLine =
+      `Available ${availableTimeMin ?? 420} min / demand ${demandPerShift ?? 100} u/shift => ${taktCalcSec}s takt from demand (line takt ${schedule.takt}s).`;
+    y3 = drawTextWrapped(doc, taktLine, 40, y3, pageW - 80, 1.18);
   }
 
   // Footer
@@ -340,7 +389,13 @@ export function exportReportToPDF({
 function drawGantt(doc, schedule, x, y, w, h) {
   const steps = schedule.steps;
   if (!steps.length) return;
-  const total = Math.max(schedule.totalCycleTime, schedule.takt) * 1.05;
+  const maxEnd = Math.max(
+    1,
+    ...steps.map((s) => Number(s.endTime) || 0),
+    Number(schedule.totalCycleTime) || 0,
+    Number(schedule.takt) || 0,
+  );
+  const total = maxEnd * 1.06;
   const labelW = 120;
   const trackW = w - labelW;
   const rowH = Math.max(14, Math.min(26, (h - 30) / steps.length));
